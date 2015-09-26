@@ -1,0 +1,30 @@
+{
+  "name": "gisele",
+  "description": "A data model library",
+  "version": "0.1.0",
+  "main": "src/gisele.js",
+  "author": {
+    "name": "Darlan Alves",
+    "email": "me@darlanalv.es"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.6",
+    "gulp-babel": "^5.2.1",
+    "gulp-concat": "^2.6.0",
+    "gulp-sourcemaps": "^1.2.4",
+    "gulp-uglify": "^0.3.1",
+    "gulp-wrap": "^0.11.0",
+    "karma": "^0.12.24",
+    "karma-babel-preprocessor": "^5.2.2",
+    "karma-jasmine": "^0.1.5",
+    "karma-phantomjs-launcher": "^0.1.4",
+    "multipipe": "^0.1.1"
+  },
+  "scripts": {
+    "test": "./node_modules/karma/bin/karma start karma.conf.js --single-run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darlanalves/gisele"
+  }
+}

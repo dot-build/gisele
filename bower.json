@@ -1,0 +1,17 @@
+{
+	"name": "gisele",
+	"description": "A data model library",
+	"version": "0.1.0",
+	"main": "src/gisele.js",
+	"author": {
+		"name": "Darlan Alves",
+		"email": "me@darlanalv.es"
+	},
+	"license": "MIT",
+	"ignore": [
+		"**/.*",
+		"node_modules",
+		"bower_components",
+		"test"
+	]
+}
