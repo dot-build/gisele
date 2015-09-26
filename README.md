@@ -9,41 +9,36 @@ A base class to write data models in Javascript. Give it a set of fields and it 
 ## Usage
 
 ```
-var Person = Model.create({
-	name: 'Person',
+var Fruit = Model.create({
+	name: 'Fruit',
 	fields: {
 		name: String,
-		age: Number,
-		dateOfBirth: Date,
-		father: 'self',
-		mother: 'self'
+		calories: { type: Number, default: 100 },
+		isFruit: { type: Boolean, default: true },
 	}
 });
 
-var john = new Person({
-	name: 'John Doe',
-	age: 30
+var fruit = new Fruit({
+	name: 'Orange',
+	calories: 120
 });
 
-var jane = new Person({
-	name: 'Jane Doe',
-	age: 27
-});
+fruit.name = 'Lemon';
 
-var jack = new Person({
-	name: 'Jack Doe'
-	dateOfBirth: '2001-12-16T03:15:00',
-	father: john,
-	mother: jane
-});
+console.log(fruit.$$dirty)
+// true
 
-jack.age = 12;
+fruit.$$.commit();
 
-console.log(jack.$$state) // 'dirty' or Model.DIRTY
-jack.__commit__();
+console.log(fruit.$$dirty)
+// false
 
-console.log(jack.$$state) // 'pristine' or Model.PRISTINE
+fruit.name = 'Apple';
 
-jack.age = 11
+fruit.$$.rollback();
+
+console.log(fruit.name)
+// 'Lemon'
+
 
 ```
