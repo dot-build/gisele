@@ -1,4 +1,5 @@
 describe('Model', function() {
+	/* globals Model */
 	function createModel() {
 		return Model.create({
 			name: 'Person',
@@ -8,75 +9,143 @@ describe('Model', function() {
 			}
 		});
 	}
-	/* globals Model */
+
 	/**
 	 * Model::create(config)
 	 *
 	 * config: {
-	 * 		fields: {}
+	 * 		name: 'ModelName',
+	 * 		fields: {} or []
 	 * }
-	 *
 	 *
 	 * fields: {
 	 * 		name: { type: String, maxlength: 255, required: true, pattern: '[a-z0-9-]' }
-	 * 		age:  { type: Number, min: 10, max: 50 }
-	 * 		relation: { type: OtherModel, collection: true }
+	 * 		age:  Number,
+	 * 		birth: Date,
+	 * 		relation: { type: OtherModel, collection: true }	// array of models
 	 * 		circular: { type: 'self' }
-	 * 	}
+	 * }
+	 *
+	 * fields: [
+	 * 		name: { type: String, maxlength: 255, required: true, pattern: '[a-z0-9-]' }
+	 * 		age:  { type: Number, min: 10, max: 50 }
+	 * 		relation: { type: OtherModel }
+	 * 		circular: { type: 'self' }
+	 * ]
 	 */
 	describe('::create(config)', function() {
-		it('should create a new model constructor that subclasses the Model base class' +
-			'from an array of fields',
-			function() {
-				var fields = [{
-					name: 'model',
-					type: 'self'
-				}];
+		it('should create a new model constructor from an array of fields', function() {
+			var fields = [{
+				name: 'model',
+				type: 'self'
+			}];
 
-				var config = {
-					name: 'MyModel',
-					fields: fields
-				};
+			var config = {
+				name: 'MyModel',
+				fields: fields
+			};
 
-				var MyModel = Model.create(config);
+			var MyModel = Model.create(config);
 
-				expect(Array.isArray(MyModel.fields)).toBe(true);
-				expect(MyModel.fields.length).toBe(1);
+			expect(MyModel.__name__).toBe('MyModel');
+			expect(Array.isArray(MyModel.__fields__)).toBe(true);
+			expect(MyModel.__fields__[0]).toEqual({
+				name: 'model',
+				type: MyModel
+			});
+		});
 
-				expect(MyModel.fields[0].type).toBe(MyModel);
+		it('should create a new model constructor from a table of fields', function() {
+			var fields = {
+				model: 'self'
+			};
+
+			var config = {
+				name: 'MyModel',
+				fields: fields
+			};
+
+			var MyModel = Model.create(config);
+
+			expect(MyModel.__name__).toBe('MyModel');
+
+			expect(Array.isArray(MyModel.__fields__)).toBe(true);
+			expect(MyModel.__fields__.length).toBe(1);
+			expect(MyModel.__fields__[0]).toEqual({
+				name: 'model',
+				type: MyModel
+			});
+		});
+
+		it('should subclass the base model', function() {
+			var MyModel = createModel();
+			var instance = new MyModel();
+			expect(instance instanceof MyModel).toBe(true);
+			expect(instance instanceof Model).toBe(true);
+		});
+	});
+
+	describe('::defineProperty(name, field)', function() {
+		it('should configure a model property', function() {
+			var model = {};
+
+			model.$$ = {
+				set: jasmine.createSpy('setter'),
+				get: jasmine.createSpy('getter')
+			};
+
+			Model.defineProperty(model, {
+				name: 'foo',
+				type: String
 			});
 
-		it('should create a new model constructor that subclasses the Model base class' +
-			'from a table of fields',
-			function() {
-				var fields = {
-					model: 'self'
-				};
+			var foo = '_foo_';
+			model.foo = foo;
+			foo = model.foo;
 
-				var config = {
-					name: 'MyModel',
-					fields: fields
-				};
+			expect(model.$$.set).toHaveBeenCalledWith('foo', '_foo_');
+			expect(model.$$.get).toHaveBeenCalledWith('foo');
+		});
+	});
 
-				var MyModel = Model.create(config);
+	describe('::initialize(self, Constructor)', function() {
+		it('should configure a model instance (properties and model methods)', function() {
+			var self = {};
 
-				expect(Array.isArray(MyModel.fields)).toBe(true);
-				expect(MyModel.fields.length).toBe(1);
+			var Ctor = function () {};
+			Ctor.__fields__ = [];
 
-				expect(MyModel.fields[0].type).toBe(MyModel);
+			Model.initialize(self, Ctor);
 
-				var instance = new MyModel();
-				expect(instance instanceof MyModel).toBe(true);
-			});
+			expect(typeof self.$$).toBe('object');
+			expect(Object.getPrototypeOf(self.$$)).toBe(Model.fn);
+
+			// check writable = false
+			var invalidValue;
+			self.$$ = {};
+			expect(self.$$).not.toBe(invalidValue);
+
+			// initial setup
+			expect(self.$$.data).toEqual({});
+			expect(self.$$.changed).toBe(false);
+		});
 	});
 
 	describe('::createField(config)', function() {
 		it('should throw an error if the config is not valid', function() {
 			function test() {
-				Model.createField(null);
+				Model.createField('foo', null);
 			}
 
-			expect(test).toThrow('Invalid field config');
+			expect(test).toThrow(Error('Invalid field config'));
+		});
+
+		it('should throw an error if the type is not valid', function() {
+			function test() {
+				Model.createField('foo', { type: {} });
+			}
+
+			expect(test).toThrow(Error('Invalid field type'));
 		});
 
 		it('should return a normalized field config for String constructor', function() {
@@ -94,105 +163,73 @@ describe('Model', function() {
 				type: Number
 			});
 		});
+
+		it('should return a normalized field config for Boolean constructor', function() {
+			var stringField = Model.createField('age', Boolean);
+			expect(stringField).toEqual({
+				name: 'age',
+				type: Boolean
+			});
+		});
+
+		it('should return a normalized field config for self model constructor', function() {
+			function Constructor () {}
+
+			var stringField = Model.createField('age', 'self', Constructor);
+			expect(stringField).toEqual({
+				name: 'age',
+				type: Constructor
+			});
+		});
 	});
 
+	describe('Model.fn methods', function() {
+		it('should handle model changes', function () {
+			var data = {
+				name: 'Paul'
+			};
+
+			var MyModel = createModel();
+			var instance = new MyModel(data);
+
+			// calls $$.set to apply changes on local object
+			instance.name = 'New name';
+			expect(instance.$$.changed.name).toBe('New name');
+
+			// original model data is untouched
+			expect(data.name).toBe('Paul');
+
+			// reads from changed data
+			expect(instance.name).toBe('New name');
+			expect(instance.$$dirty).toBe(true);
+
+			// apply the changes
+			instance.$$.commit();
+
+			// now the original data model is touched
+			expect(instance.name).toBe('New name');
+			expect(instance.$$dirty).toBe(false);
+
+			instance.name = 'Other name';
+
+			// new value saved again but not commited
+			expect(instance.name).toBe('Other name');
+
+			// revert the changes
+			instance.$$.rollback();
+
+			// previous value restored
+			expect(instance.name).toBe('New name');
+		});
+	});
+
+	/*
 	describe('#__validate__()', function() {
 		it('should return a map of validation errors (empty on abstract model)', function() {
 			var model = new Model();
 			expect(model.__validate__()).toEqual({});
 		});
-	});
-
-	describe('#__init__(data)', function() {
-		it('should initialize the model instance and apply the data to instance', function() {
-			var data = {
-				age: 30
-			};
-
-			var Person = createModel();
-			var instance = new Person(data);
-			expect(instance.__.age).toBe(data.age);
-		});
-	});
-
-	describe('#__set__(data)', function() {
-		it('should update a model property', function() {
-			var Person = createModel();
-			var instance = new Person();
-			instance.__set__('name', 'John');
-
-			expect(instance.__.name).toBe('John');
-		});
-
-		it('should update several model properties', function() {
-			var Person = createModel();
-			var instance = new Person();
-			instance.__set__({
-				'name': 'John'
-			});
-
-			expect(instance.__.name).toBe('John');
-		});
-	});
-
-	describe('#__get__(name)', function() {
-		it('should return a property value', function() {
-			var Person = createModel();
-			var instance = new Person();
-			instance.__set__({
-				'name': 'John'
-			});
-
-			expect(instance.__get__('name')).toBe('John');
-		});
-	});
-
-	describe('__commit__', function() {
-		it('should apply the changes from __ to $$', function () {
-			var data = {
-				name: 'John'
-			};
-
-			var Person = createModel();
-			var instance = new Person(data);
-
-			instance.name = 'James';
-
-			expect(instance.$$.name).toBe('John');
-
-			instance.__commit__();
-			expect(instance.$$.name).toBe('James');
-		});
-	});
-
-	describe('__rollback__', function() {
-		it('should copy the values from $$ to __', function () {
-			var data = {
-				name: 'John'
-			};
-
-			var Person = createModel();
-			var instance = new Person(data);
-
-			expect(instance.__.name).toBe('John');
-			instance.name = 'James';
-
-			instance.__rollback__();
-			expect(instance.$$.name).toBe('John');
-		});
-	});
-
-	describe('getter and setter setup', function() {
-		it('should read/write to __ property when a known field is changed', function() {
-			var Person = createModel();
-			var instance = new Person();
-			instance.name = 'James';
-			instance.__.age = 22;
-
-			expect(instance.__.name).toBe('James');
-			expect(instance.age).toBe(22);
-		});
-	});
+	});*/
 
 	describe('performance', function() {
 		it('should be fast', function() {
@@ -212,12 +249,15 @@ describe('Model', function() {
 			}
 
 			var t1 = Date.now();
-			console.log('Construction of 1000 models took ' + (t1 - t0) + ' milliseconds.');
+			var time = t1 - t0;
+
+			expect(time).toBeLessThan(20);
+			console.log('Construction of 1000 models took ' + time + ' milliseconds.');
 		});
 	});
 
-	describe('relationship between models', function() {
-		it('should handle a relationship between models', function () {
+	/*describe('relationships', function() {
+		it('should handle a relationship between models', function() {
 			var Person = Model.create({
 				name: 'Person',
 				fields: {
@@ -225,29 +265,35 @@ describe('Model', function() {
 					age: Number,
 					dateOfBirth: Date,
 					father: 'self',
-					mother: 'self'
+					mother: {
+						type: 'self',
+						default: null
+					}
 				}
 			});
 
-			var john = new Person({
+			var john = {
 				name: 'John Doe',
 				age: 30
-			});
+			};
 
-			var jane = new Person({
+			var foo = new Person(john);
+			// console.log(foo);
+
+			var jane = {
 				name: 'Jane Doe',
 				age: 27
-			});
+			};
 
 			var jack = new Person({
-				name: 'Jack Doe'
+				name: 'Jack Doe',
 				age: 8,
 				dateOfBirth: '2001-12-16T03:15:00',
 				father: john,
-				mother: jane
+				// mother: jane
 			});
 
 			console.log(jack);
 		});
-	});
+	});*/
 });

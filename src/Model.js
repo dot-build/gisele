@@ -1,121 +1,201 @@
+/**
+ * @class Model
+ *
+ * Model layout:
+ *
+ * 		model = {
+ * 			$$: {}					// model methods (defined in Model.fn)
+ *
+ * 			__: {					// Model data
+ * 				$data: {}			// original data (set at construction or commited)
+ * 				$changed: {}		// changed fields
+ * 			}
+ *
+ * 			$$dirty: Boolean		// true if the model has changes to save
+ * 		}
+ */
 class Model {
-	__validate__() {
-		return {};
-	}
-
-	__define__(field) {
-		let getter = () => this.__get__(field.name);
-		let setter = (value) => this.__set__(field.name, value);
-
-		let descriptor = {
-			enumerable: true,
-			get: getter,
-			set: setter
-		};
-
-		Object.defineProperty(this, field.name, descriptor);
-
-		if ('default' in field) {
-			setter(field.name, field.default);
-		}
-	}
-
-	__init__(data) {
-		let defineField = (field) => this.__define__(field);
-
-		this.__ = {};
-		this.$$ = data;
-		this.__fields__.forEach(defineField);
-		this.__set__(data);
-	}
-
-	__set__(name, value) {
-		if (arguments.length === 1) {
-			Object.keys(name || {}).forEach((key) => this.__[key] = name[key]);
-		}
-
-		if (arguments.length === 2) {
-			this.__[name] = value;
-		}
-
-		return this;
-	}
-
-	__get__(name) {
-		return this.__[name];
-	}
-
-	__commit__() {
-		this.__fields__.forEach((field) => this.$$[field.name] = this.__[field.name]);
-	}
-
-	__rollback__() {
-		this.__fields__.forEach((field) => this.__[field.name] = this.$$[field.name]);
-	}
+	// toString() {
+	// 	return this.$$.name;
+	// }
 }
+
+Model.defineProperty = function defineProperty(model, field) {
+	let name = field.name;
+
+	let getter = function() {
+		return model.$$.get(name);
+	};
+
+	let setter = function(value) {
+		if (field.readOnly) return;
+
+		const Type = field.type;
+		value = Type(value);
+
+		model.$$.set(name, value);
+	};
+
+	let descriptor = {
+		enumerable: true,
+		get: getter,
+		set: setter
+	};
+
+	Object.defineProperty(model, name, descriptor);
+};
+
+Model.initialize = function(self, Constructor) {
+	let fields = Constructor.__fields__;
+
+	fields.forEach(function(field) {
+		Model.defineProperty(self, field);
+	});
+
+	var modelInternals = Object.create(Model.fn);
+
+	modelInternals.data = {};
+	modelInternals.changed = false;
+	modelInternals.fields = Constructor.__fields__;
+	modelInternals.name = Constructor.__name__;
+
+	Object.defineProperty(self, '$$', {
+		enumerable: false,
+		value: modelInternals
+	});
+
+	Object.defineProperty(self, '$$dirty', {
+		enumerable: false,
+		set: Model.noop,
+		get: function() {
+			return (self.$$.changed !== false);
+		}
+	});
+};
+
+Model.noop = function noop() {};
 
 Model.create = function createModel(config) {
 	let name = config.name || 'Model';
 	let fields = config.fields || [];
-	let Constructor = Model.createConstructor(name);
 
-	if (Array.isArray(fields)) {
-		fields = fields.reduce(function(map, item) {
-			map[item.name] = item;
-			return map;
-		}, {});
+	let Constructor = function ModelClass(data) {
+		Model.initialize(this, Constructor);
+
+		if (typeof data === 'object' && data) {
+			this.$$.setPersistent(data);
+		}
+	};
+
+	// object format: { fieldName: 'self', otherField: String ... }
+	if (!Array.isArray(fields)) {
+		fields = Object.keys(fields).reduce(function(stack, key) {
+			let field = Model.createField(key, fields[key], Constructor);
+			stack.push(field);
+			return stack;
+		}, []);
 	}
 
-	fields = Object.keys(fields).map(function(name) {
-		let field = Model.createField(name, fields[name]);
-
+	// replaces the self reference with the actual model constructor
+	fields.forEach(function(field) {
 		if (field.type === 'self') {
 			field.type = Constructor;
 		}
-
-		return field;
 	});
 
 	let prototype = Object.create(Model.prototype);
+	prototype.constructor = Constructor;
 	Constructor.prototype = prototype;
-	Constructor.prototype.constructor = Constructor;
-	Constructor.prototype.__fields__ = fields;
-	Constructor.fields = fields;
+
+	let staticProperties = {
+		__fields__: fields,
+		__name__: name,
+		__model__: true
+	};
+
+	Object.keys(staticProperties).forEach(function(key) {
+		Object.defineProperty(Constructor, key, {
+			value: staticProperties[key],
+			writable: false
+		});
+	});
 
 	return Constructor;
 };
 
-Model.createField = function createField(name, config) {
+Model.createField = function createField(name, config, Constructor) {
 	if (!config) {
 		throw new Error('Invalid field config', config);
+	}
+
+	if (config === 'self') {
+		config = Constructor;
 	}
 
 	let type = typeof config;
 	let field = config;
 
-	// field is a constructor or a reference to the model itself (circular reference)
-	if (type === 'function' || config === 'self') {
+	// field is a constructor
+	if (type === 'function') {
 		field = {
 			name,
 			type: field
 		};
 	}
 
+	if (typeof field.type !== 'function') {
+		throw new Error('Invalid field type', field.type);
+	}
+
 	return field;
 };
 
-const MODEL_CONSTRUCTOR = `return function %%(data){
-	if (this instanceof %% === false) {
-		return new %%(data);
+Model.applyChanges = function (object, name, value) {
+	if (typeof name === 'object' && name) {
+		Object.keys(name).forEach((key) => object[key] = name[key]);
+	} else {
+		object[name] = value;
 	}
-
-	this.__init__(data);
-}`;
-
-Model.createConstructor = function makeNamedFunction(name) {
-	/* jshint evil: true */
-	let code = MODEL_CONSTRUCTOR.replace(/%%/g, name);
-	let fn = new Function(code);
-
-	return fn();
 };
+
+Model.applyConstructor = function (value, Constructor) {
+	if (Constructor.__model__) {
+		value = value !== null && new Constructor(value) || null;
+	} else {
+		value = value !== undefined && Constructor(value) || undefined;
+	}
+};
+
+Model.fn = {
+	setPersistent(name, value) {
+		Model.applyChanges(this.data, name, value);
+	},
+
+	set(name, value) {
+		if (!this.changed) {
+			this.changed = {};
+		}
+
+		Model.applyChanges(this.changed, name, value);
+
+		return this;
+	},
+
+	get(name) {
+		return (this.changed && name in this.changed ? this.changed[name] : this.data[name]);
+	},
+
+	validate() {
+		return {};
+	},
+
+	commit() {
+		Model.applyChanges(this.data, this.changed);
+		this.changed = false;
+	},
+
+	rollback() {
+		this.changed = false;
+	}
+};
+
