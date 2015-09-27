@@ -18,12 +18,12 @@ function buildRelease() {
 
 	multipipe(
 		gulp.src('src/**/*.js'),
-		sourcemaps.init(),
-		babel(babelOptions),
 		concat('gisele.js'),
+		babel(babelOptions),
+		// sourcemaps.init(),
 		wrap({ src: __dirname + '/build.template.js'}),
 		uglify(),
-		sourcemaps.write('.'),
+		// sourcemaps.write('.'),
 		gulp.dest('dist'),
 		onError
 	);

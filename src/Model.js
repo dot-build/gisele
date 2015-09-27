@@ -19,7 +19,7 @@ class Model {
 
 /**
  * Creates a new Model constructor using the given config
- * P
+ * @param {Object} config 		Model configuration
  */
 Model.create = function createModel(config) {
 	let name = config.name || 'Model';
@@ -63,7 +63,11 @@ Model.create = function createModel(config) {
 				throw new Error(`Cannot override field ${name} with a custom method of same name`);
 			}
 
-			Constructor.prototype[name] = customMethods[name];
+			var method = customMethods[name];
+
+			Constructor.prototype[name] = function() {
+				method.apply(this, arguments);
+			};
 		});
 	}
 
@@ -75,7 +79,7 @@ Model.create = function createModel(config) {
  * Adds getter/setter to read/write on internal model object
  *
  * @param {Object} model 		Model instance
- * @param {Field} field 		Field instance (usually from Model.__fields__ array)
+ * @param {Field} field 		Field instance
  */
 Model.defineProperty = function defineProperty(model, field) {
 	let name = field.name;
@@ -105,7 +109,7 @@ Model.defineProperty = function defineProperty(model, field) {
  * Initialize a model instance
  *
  * @param {Object} model 			Model instance
- * @param {Function} Constructor 	A Model class constructor (created by Model.create)
+ * @param {Function} Constructor 	Constructor of instance (a Function created with Model.create)
  */
 Model.initialize = function(model, Constructor) {
 	let fields = Constructor.__fields__;
@@ -190,7 +194,7 @@ Model.applyChanges = function(object, name, value) {
 /**
  * Apply default values (defined on model fields) to model instance
  * @param {Object} model 			Model instance
- * @param {Function} Constructor 	Model constructor
+ * @param {Function} Constructor 	Constructor of model instance
  */
 Model.applyDefaultValues = function(model, Constructor) {
 	Constructor.__fields__.forEach(function(field) {
@@ -200,6 +204,11 @@ Model.applyDefaultValues = function(model, Constructor) {
 	}, model);
 };
 
+/**
+ * Apply a set of values to a model instance
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	Constructor of model instance
+ */
 Model.applyValues = function(model, Constructor, values) {
 	if (!values || typeof values !== 'object') return;
 
@@ -232,10 +241,6 @@ class ModelMethods {
 		return (this.changed && name in this.changed ? this.changed[name] : this.data[name]);
 	}
 
-	validate() {
-		return {};
-	}
-
 	commit() {
 		Model.applyChanges(this.data, this.changed);
 		this.changed = false;
@@ -246,6 +251,10 @@ class ModelMethods {
 	}
 }
 
+/**
+ * Creates an instance of ModelMethods bound to Constructor
+ * to use as a base object for a model instance
+ */
 ModelMethods.create = function(Constructor) {
 	var methods = new ModelMethods();
 

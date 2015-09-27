@@ -53,9 +53,10 @@ describe('Model', function() {
 		});
 
 		it('should subclass the base model', function() {
-			var MyModel = createModel();
-			var instance = new MyModel();
-			expect(instance instanceof MyModel).toBe(true);
+			var Person = createModel();
+
+			var instance = new Person();
+			expect(instance instanceof Person).toBe(true);
 			expect(instance instanceof Model).toBe(true);
 		});
 	});
@@ -261,6 +262,19 @@ describe('Model', function() {
 		});
 	});
 
+	describe('#toJSON()', function() {
+		it('should ', function () {
+			var Person = createModel();
+
+			var instance = new Person({
+				name: 'John',
+				age: 20
+			});
+
+			console.log(instance);
+		});
+	});
+
 	describe('default values on fields', function() {
 		it('should initialize field values with their defaults but still apply data at construction', function () {
 			var Orange = Model.create({
@@ -283,7 +297,7 @@ describe('Model', function() {
 		});
 	});
 
-	/*xdescribe('relationships', function() {
+	describe('relationships', function() {
 		it('should handle a relationship between models', function() {
 			var Person = Model.create({
 				name: 'Person',
@@ -292,10 +306,7 @@ describe('Model', function() {
 					age: Number,
 					dateOfBirth: Date,
 					father: 'self',
-					mother: {
-						type: 'self',
-						default: null
-					}
+					mother: 'self'
 				}
 			});
 
@@ -303,9 +314,6 @@ describe('Model', function() {
 				name: 'John Doe',
 				age: 30
 			};
-
-			var foo = new Person(john);
-			// console.log(foo);
 
 			var jane = {
 				name: 'Jane Doe',
@@ -315,12 +323,48 @@ describe('Model', function() {
 			var jack = new Person({
 				name: 'Jack Doe',
 				age: 8,
-				dateOfBirth: '2001-12-16T03:15:00',
+				dateOfBirth: '2001-12-16T03:15:00Z',
 				father: john,
-				// mother: jane
+				mother: jane
 			});
 
-			console.log(jack);
+			expect(jack instanceof Person).toBe(true);
+			expect(jack.father instanceof Person).toBe(true);
+			expect(jack.mother instanceof Person).toBe(true);
 		});
-	});*/
+	});
+
+	describe('custom methods', function() {
+		it('should allow custom methods to be added on models', function () {
+			var MyModel = Model.create({
+				name: 'Foo',
+
+				fields: {
+					name: String
+				},
+
+				methods: {
+					foo: function() {
+						this.$$.set('name', 'foo');
+					},
+
+					bar: function() {
+						this.$$.rollback();
+					}
+				}
+			});
+
+			var instance = new MyModel({
+				name: 'test'
+			});
+
+			// calls internal method to update name
+			instance.foo();
+			expect(instance.name).toBe('foo');
+
+			instance.bar();
+			// calls rollback() internally
+			expect(instance.name).toBe('test');
+		});
+	});
 });

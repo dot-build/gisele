@@ -3,7 +3,13 @@
 
 	var Gisele = {
 		Model: Model,
-		Collection: Collection
+		ModelMethods: ModelMethods,
+
+		Field: Field,
+		StringField: StringField,
+		BooleanField: BooleanField,
+		NumberField: NumberField,
+		CustomField: CustomField
 	};
 
 	<%= contents %>
