@@ -36,23 +36,13 @@ var Field = (function () {
 	return Field;
 })();
 
+Field.register = new Map();
+
 Field.create = function (config) {
-	switch (config.type) {
-		case String:
-			return new StringField(config);
+	var type = config.type;
+	var FieldConstructor = Field.register.get(type) || CustomField;
 
-		case Number:
-			return new NumberField(config);
-
-		case Boolean:
-			return new BooleanField(config);
-
-		case Date:
-			return new DateField(config);
-
-		default:
-			return new CustomField(config);
-	}
+	return new FieldConstructor(config);
 };
 
 var StringField = (function (_Field) {
@@ -130,6 +120,8 @@ var DateField = (function (_Field4) {
 
 			if (typeof value === 'string') {
 				var parsedTime = Date.parse(value);
+				if (!isFinite(parsedTime)) return null;
+
 				return new Date(parsedTime);
 			}
 
@@ -149,18 +141,8 @@ var CustomField = (function (_Field5) {
 		_get(Object.getPrototypeOf(CustomField.prototype), 'constructor', this).apply(this, arguments);
 	}
 
-	/* globals Field */
 	/**
-  * @class Model
-  *
-  * Model layout:
-  *
-  * 		model = {
-  * 			$$: {}					// model methods (instance of ModelMethods class)
-  * 			$$dirty: Boolean		// true if the model has changes to save
-  *
-  * 			// ... properties and custom methods
-  * 		}
+  * Default constructor/field for primitive values
   */
 
 	_createClass(CustomField, [{
@@ -172,6 +154,25 @@ var CustomField = (function (_Field5) {
 
 	return CustomField;
 })(Field);
+
+Field.register.set(String, StringField);
+Field.register.set(Number, NumberField);
+Field.register.set(Boolean, BooleanField);
+Field.register.set(Date, DateField);
+
+/* globals Field */
+/**
+ * @class Model
+ *
+ * Model layout:
+ *
+ * 		model = {
+ * 			$$: {}					// model methods (instance of ModelMethods class)
+ * 			$$dirty: Boolean		// true if the model has changes to save
+ *
+ * 			// ... properties and custom methods
+ * 		}
+ */
 
 var Model = (function () {
 	function Model() {
@@ -217,7 +218,7 @@ Model.toJSON = function (model) {
 };
 
 Model.isModel = function (value) {
-	return value instanceof Model;
+	return value instanceof Model || typeof value === 'function' && value.__model__;
 };
 
 /**
@@ -485,15 +486,15 @@ ModelMethods.create = function (Constructor) {
 	return methods;
 };
 
+/**
+ * Model.fn
+ * Methods available on each model instance
+ */
+Model.fn = ModelMethods.prototype;
+
 	var Gisele = {
 		Model: Model,
-		ModelMethods: ModelMethods,
-
-		Field: Field,
-		StringField: StringField,
-		BooleanField: BooleanField,
-		NumberField: NumberField,
-		CustomField: CustomField
+		Field: Field
 	};
 
 	if (typeof define === 'function' && define.amd) {

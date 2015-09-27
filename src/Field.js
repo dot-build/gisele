@@ -1,65 +1,65 @@
 class Field {
-	constructor(config) {
-		if (!config) {
-			throw new Error('Invalid field config');
-		}
+    constructor(config) {
+        if (!config) {
+            throw new Error('Invalid field config');
+        }
 
-		Object.keys(config).forEach((key) => this[key] = config[key]);
-	}
+        Object.keys(config).forEach((key) => this[key] = config[key]);
+    }
 
-	parse(value) {
-		return value;
-	}
+    parse(value) {
+        return value;
+    }
 }
 
 Field.register = new Map();
 
 Field.create = function(config) {
-	let type = config.type;
-	let FieldConstructor = Field.register.get(type) || CustomField;
+    let type = config.type;
+    let FieldConstructor = Field.register.get(type) || CustomField;
 
-	return new FieldConstructor(config);
+    return new FieldConstructor(config);
 };
 
 class StringField extends Field {
-	parse(value) {
-		return String(value !== undefined ? value : '').trim();
-	}
+    parse(value) {
+        return String(value !== undefined ? value : '').trim();
+    }
 }
 
 class BooleanField extends Field {
-	parse(value) {
-		return !!value;
-	}
+    parse(value) {
+        return !!value;
+    }
 }
 
 class NumberField extends Field {
-	parse(value) {
-		return value && Number(value) || 0;
-	}
+    parse(value) {
+        return value && Number(value) || 0;
+    }
 }
 
 class DateField extends Field {
-	parse(value) {
-		if (isFinite(value)) {
-			return new Date(value);
-		}
+    parse(value) {
+        if (isFinite(value)) {
+            return new Date(value);
+        }
 
-		if (typeof value === 'string') {
-			let parsedTime = Date.parse(value);
-			if (!isFinite(parsedTime)) return null;
+        if (typeof value === 'string') {
+            let parsedTime = Date.parse(value);
+            if (!isFinite(parsedTime)) return null;
 
-			return new Date(parsedTime);
-		}
+            return new Date(parsedTime);
+        }
 
-		return null;
-	}
+        return null;
+    }
 }
 
 class CustomField extends Field {
-	parse(value) {
-		return value !== null ? new this.type(value) : null;
-	}
+    parse(value) {
+        return value !== null ? new this.type(value) : null;
+    }
 }
 
 /**
