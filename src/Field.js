@@ -8,6 +8,26 @@ class Field {
     }
 
     parse(value) {
+        if (this.isArray) {
+            return this.parseArray(value);
+        }
+
+        return this.parseValue(value);
+    }
+
+    parseValue(value) {
+        return value;
+    }
+
+    parseArray(value) {
+        if (!Array.isArray(value)) {
+            return null;
+        }
+
+        return value.map(this.parseValue, this);
+    }
+
+    toJSON(value) {
         return value;
     }
 }
@@ -22,25 +42,25 @@ Field.create = function(config) {
 };
 
 class StringField extends Field {
-    parse(value) {
+    parseValue(value) {
         return String(value !== undefined ? value : '').trim();
     }
 }
 
 class BooleanField extends Field {
-    parse(value) {
+    parseValue(value) {
         return !!value;
     }
 }
 
 class NumberField extends Field {
-    parse(value) {
+    parseValue(value) {
         return value && Number(value) || 0;
     }
 }
 
 class DateField extends Field {
-    parse(value) {
+    parseValue(value) {
         if (isFinite(value)) {
             return new Date(value);
         }
@@ -57,7 +77,7 @@ class DateField extends Field {
 }
 
 class CustomField extends Field {
-    parse(value) {
+    parseValue(value) {
         return value !== null ? new this.type(value) : null;
     }
 }
