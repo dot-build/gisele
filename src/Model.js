@@ -1,106 +1,41 @@
+/* globals Field */
 /**
  * @class Model
  *
  * Model layout:
  *
  * 		model = {
- * 			$$: {}					// model methods (defined in Model.fn)
- *
- * 			__: {					// Model data
- * 				$data: {}			// original data (set at construction or commited)
- * 				$changed: {}		// changed fields
- * 			}
- *
+ * 			$$: {}					// model methods (instance of ModelMethods class)
  * 			$$dirty: Boolean		// true if the model has changes to save
+ *
+ * 			// ... properties and custom methods
  * 		}
  */
 class Model {
-	// toString() {
-	// 	return this.$$.name;
-	// }
+	toString() {
+		return this.$$.name;
+	}
 }
 
-Model.defineProperty = function defineProperty(model, field) {
-	let name = field.name;
-
-	let getter = function() {
-		return model.$$.get(name);
-	};
-
-	let setter = function(value) {
-		if (field.readOnly) return;
-
-		const Type = field.type;
-		value = Type(value);
-
-		model.$$.set(name, value);
-	};
-
-	let descriptor = {
-		enumerable: true,
-		get: getter,
-		set: setter
-	};
-
-	Object.defineProperty(model, name, descriptor);
-};
-
-Model.initialize = function(self, Constructor) {
-	let fields = Constructor.__fields__;
-
-	fields.forEach(function(field) {
-		Model.defineProperty(self, field);
-	});
-
-	var modelInternals = Object.create(Model.fn);
-
-	modelInternals.data = {};
-	modelInternals.changed = false;
-	modelInternals.fields = Constructor.__fields__;
-	modelInternals.name = Constructor.__name__;
-
-	Object.defineProperty(self, '$$', {
-		enumerable: false,
-		value: modelInternals
-	});
-
-	Object.defineProperty(self, '$$dirty', {
-		enumerable: false,
-		set: Model.noop,
-		get: function() {
-			return (self.$$.changed !== false);
-		}
-	});
-};
-
-Model.noop = function noop() {};
-
+/**
+ * Creates a new Model constructor using the given config
+ * P
+ */
 Model.create = function createModel(config) {
 	let name = config.name || 'Model';
 	let fields = config.fields || [];
 
 	let Constructor = function ModelClass(data) {
 		Model.initialize(this, Constructor);
-
-		if (typeof data === 'object' && data) {
-			this.$$.setPersistent(data);
-		}
+		Model.applyDefaultValues(this, Constructor);
+		Model.applyValues(this, Constructor, data);
 	};
 
-	// object format: { fieldName: 'self', otherField: String ... }
-	if (!Array.isArray(fields)) {
-		fields = Object.keys(fields).reduce(function(stack, key) {
-			let field = Model.createField(key, fields[key], Constructor);
-			stack.push(field);
-			return stack;
-		}, []);
-	}
+	let fieldNames = Object.keys(fields);
 
-	// replaces the self reference with the actual model constructor
-	fields.forEach(function(field) {
-		if (field.type === 'self') {
-			field.type = Constructor;
-		}
+	// object format: { fieldName: 'self', otherField: String ... }
+	fields = fieldNames.map(function(key) {
+		return Model.createField(key, fields[key], Constructor);
 	});
 
 	let prototype = Object.create(Model.prototype);
@@ -120,16 +55,101 @@ Model.create = function createModel(config) {
 		});
 	});
 
+	let customMethods = config.methods;
+
+	if (customMethods) {
+		Object.keys(customMethods).forEach(function(name) {
+			if (fieldNames.indexOf(name) !== -1) {
+				throw new Error(`Cannot override field ${name} with a custom method of same name`);
+			}
+
+			Constructor.prototype[name] = customMethods[name];
+		});
+	}
+
 	return Constructor;
 };
 
+/**
+ * Defines a model property based on settings of a Field instance
+ * Adds getter/setter to read/write on internal model object
+ *
+ * @param {Object} model 		Model instance
+ * @param {Field} field 		Field instance (usually from Model.__fields__ array)
+ */
+Model.defineProperty = function defineProperty(model, field) {
+	let name = field.name;
+	let getter = function() {
+		return model.$$.get(name);
+	};
+
+	let setter = Model.noop;
+
+	if (!field.readOnly) {
+		setter = function setter(value) {
+			value = field.parse(value);
+			model.$$.set(name, value);
+		};
+	}
+
+	let descriptor = {
+		enumerable: true,
+		get: getter,
+		set: setter
+	};
+
+	Object.defineProperty(model, name, descriptor);
+};
+
+/**
+ * Initialize a model instance
+ *
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	A Model class constructor (created by Model.create)
+ */
+Model.initialize = function(model, Constructor) {
+	let fields = Constructor.__fields__;
+
+	fields.forEach(function(field) {
+		Model.defineProperty(model, field);
+	});
+
+	var modelInternals = ModelMethods.create(Constructor);
+
+	// Model methods
+	Object.defineProperty(model, '$$', {
+		enumerable: false,
+		value: modelInternals
+	});
+
+	// Virtual property. Returns true if the model has any changes
+	Object.defineProperty(model, '$$dirty', {
+		enumerable: false,
+		set: Model.noop,
+		get: function() {
+			return (model.$$.changed !== false);
+		}
+	});
+};
+
+Model.noop = function noop() {};
+
+/**
+ * Create and return a model field instance
+ * @param {String} name 			Field name
+ * @param {Object} config 			Field config
+ * @param {Function} Constructor 	The model constructor which will use this field
+ */
 Model.createField = function createField(name, config, Constructor) {
 	if (!config) {
 		throw new Error('Invalid field config', config);
 	}
 
+	// replace the 'self' reference with the actual model Constructor
 	if (config === 'self') {
 		config = Constructor;
+	} else if (config.type === 'self') {
+		config.type = Constructor;
 	}
 
 	let type = typeof config;
@@ -138,19 +158,28 @@ Model.createField = function createField(name, config, Constructor) {
 	// field is a constructor
 	if (type === 'function') {
 		field = {
-			name,
 			type: field
 		};
+	}
+
+	if (!field.name) {
+		field.name = name;
 	}
 
 	if (typeof field.type !== 'function') {
 		throw new Error('Invalid field type', field.type);
 	}
 
-	return field;
+	return Field.create(field);
 };
 
-Model.applyChanges = function (object, name, value) {
+/**
+ * Apply a change to an object or a set of changes
+ * @param {Object} object 		The target object
+ * @param {String|Object}		Property name, or an object with changes
+ * @param {*} value 			The value to apply (if name is a property)
+ */
+Model.applyChanges = function(object, name, value) {
 	if (typeof name === 'object' && name) {
 		Object.keys(name).forEach((key) => object[key] = name[key]);
 	} else {
@@ -158,18 +187,36 @@ Model.applyChanges = function (object, name, value) {
 	}
 };
 
-Model.applyConstructor = function (value, Constructor) {
-	if (Constructor.__model__) {
-		value = value !== null && new Constructor(value) || null;
-	} else {
-		value = value !== undefined && Constructor(value) || undefined;
-	}
+/**
+ * Apply default values (defined on model fields) to model instance
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	Model constructor
+ */
+Model.applyDefaultValues = function(model, Constructor) {
+	Constructor.__fields__.forEach(function(field) {
+		if ('default' in field) {
+			this.$$.setPersistent(field.name, field.default);
+		}
+	}, model);
 };
 
-Model.fn = {
+Model.applyValues = function(model, Constructor, values) {
+	if (!values || typeof values !== 'object') return;
+
+	Constructor.__fields__.forEach(function(field) {
+		let name = field.name;
+
+		if (name in values) {
+			let value = field.parse(values[name]);
+			model.$$.setPersistent(name, value);
+		}
+	});
+};
+
+class ModelMethods {
 	setPersistent(name, value) {
 		Model.applyChanges(this.data, name, value);
-	},
+	}
 
 	set(name, value) {
 		if (!this.changed) {
@@ -179,23 +226,33 @@ Model.fn = {
 		Model.applyChanges(this.changed, name, value);
 
 		return this;
-	},
+	}
 
 	get(name) {
 		return (this.changed && name in this.changed ? this.changed[name] : this.data[name]);
-	},
+	}
 
 	validate() {
 		return {};
-	},
+	}
 
 	commit() {
 		Model.applyChanges(this.data, this.changed);
 		this.changed = false;
-	},
+	}
 
 	rollback() {
 		this.changed = false;
 	}
-};
+}
 
+ModelMethods.create = function(Constructor) {
+	var methods = new ModelMethods();
+
+	methods.data = {};
+	methods.changed = false;
+	methods.fields = Constructor.__fields__;
+	methods.name = Constructor.__name__;
+
+	return methods;
+};

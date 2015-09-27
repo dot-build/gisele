@@ -21,9 +21,9 @@ function buildRelease() {
 		sourcemaps.init(),
 		babel(babelOptions),
 		concat('gisele.js'),
+		wrap({ src: __dirname + '/build.template.js'}),
 		uglify(),
 		sourcemaps.write('.'),
-		wrap({ src: __dirname + '/build.template.js'}),
 		gulp.dest('dist'),
 		onError
 	);
