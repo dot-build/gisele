@@ -14,22 +14,22 @@ describe('Model', function() {
      * Model::create(config)
      *
      * config: {
-     * 		name: 'ModelName',
-     * 		fields: {},
-     * 		methods: {}
+     *      name: 'ModelName',
+     *      fields: {},
+     *      methods: {}
      * }
      *
      * fields: {
-     * 		name: { type: String, maxlength: 255, required: true, pattern: '[a-z0-9-]' }
-     * 		age:  Number,
-     * 		birth: Date,
-     * 		relation: { type: OtherModel, collection: true }	// array of models
-     * 		circular: { type: 'self' }
+     *      name: { type: String, maxlength: 255, required: true, pattern: '[a-z0-9-]' }
+     *      age:  Number,
+     *      birth: Date,
+     *      relation: { type: OtherModel, collection: true }    // array of models
+     *      circular: { type: 'self' }
      * }
      *
      * methods: {
-     * 		foo(),
-     * 		bar()
+     *      foo(),
+     *      bar()
      * }
      */
     describe('::create(config)', function() {
@@ -83,6 +83,26 @@ describe('Model', function() {
 
             expect(model.$$.set).toHaveBeenCalledWith('foo', '_foo_');
             expect(model.$$.get).toHaveBeenCalledWith('foo');
+        });
+
+        it('should NOT allow to write a readOnly field', function() {
+            var model = {};
+
+            model.$$ = {
+                set: jasmine.createSpy('setter'),
+                get: jasmine.createSpy('getter')
+            };
+
+            var field = Field.create({
+                name: 'foo',
+                type: String,
+                readOnly: true
+            });
+
+            Model.defineProperty(model, field);
+            model.foo = 'foo';
+
+            expect(model.$$.set).not.toHaveBeenCalled();
         });
     });
 

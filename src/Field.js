@@ -49,6 +49,10 @@ class StringField extends Field {
     parseValue(value) {
         return String(value !== undefined ? value : '').trim();
     }
+
+    toJSON(value) {
+        return typeof value !== 'object' ? String(value) : undefined;
+    }
 }
 
 class BooleanField extends Field {

@@ -118,6 +118,22 @@ describe('StringField', function() {
             expect(field.parse(0)).toBe('0');
         });
     });
+
+    describe('#toJSON(value)', function() {
+        it('should return a string if the value is primitive', function () {
+            var field = new StringField({});
+            expect(field.toJSON(123)).toBe('123');
+            expect(field.toJSON(false)).toBe('false');
+            expect(field.toJSON('foo bar')).toBe('foo bar');
+            expect(field.toJSON(0)).toBe('0');
+        });
+
+        it('should return undefined for objects', function () {
+            var field = new StringField({});
+            expect(field.toJSON({})).toBe(undefined);
+            expect(field.toJSON([])).toBe(undefined);
+        });
+    });
 });
 
 describe('BooleanField', function() {
