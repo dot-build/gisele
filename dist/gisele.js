@@ -12,147 +12,175 @@ function _inherits(subClass, superClass) { if (typeof superClass !== 'function' 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
 var Field = (function () {
-	function Field(config) {
-		var _this = this;
+    function Field(config) {
+        var _this = this;
 
-		_classCallCheck(this, Field);
+        _classCallCheck(this, Field);
 
-		if (!config) {
-			throw new Error('Invalid field config');
-		}
+        if (!config) {
+            throw new Error('Invalid field config');
+        }
 
-		Object.keys(config).forEach(function (key) {
-			return _this[key] = config[key];
-		});
-	}
+        Object.keys(config).forEach(function (key) {
+            return _this[key] = config[key];
+        });
+    }
 
-	_createClass(Field, [{
-		key: 'parse',
-		value: function parse(value) {
-			return value;
-		}
-	}]);
+    _createClass(Field, [{
+        key: 'validate',
+        value: function validate(value) {
+            return this.required && value === undefined ? false : true;
+        }
+    }, {
+        key: 'parse',
+        value: function parse(value) {
+            if (this.isArray) {
+                return this.parseArray(value);
+            }
 
-	return Field;
+            return this.parseValue(value);
+        }
+    }, {
+        key: 'parseValue',
+        value: function parseValue(value) {
+            return value;
+        }
+    }, {
+        key: 'parseArray',
+        value: function parseArray(value) {
+            if (!Array.isArray(value)) {
+                return null;
+            }
+
+            return value.map(this.parseValue, this);
+        }
+    }, {
+        key: 'toJSON',
+        value: function toJSON(value) {
+            return value;
+        }
+    }]);
+
+    return Field;
 })();
 
 Field.register = new Map();
 
 Field.create = function (config) {
-	var type = config.type;
-	var FieldConstructor = Field.register.get(type) || CustomField;
+    var type = config.type;
+    var FieldConstructor = Field.register.get(type) || CustomField;
 
-	return new FieldConstructor(config);
+    return new FieldConstructor(config);
 };
 
 var StringField = (function (_Field) {
-	_inherits(StringField, _Field);
+    _inherits(StringField, _Field);
 
-	function StringField() {
-		_classCallCheck(this, StringField);
+    function StringField() {
+        _classCallCheck(this, StringField);
 
-		_get(Object.getPrototypeOf(StringField.prototype), 'constructor', this).apply(this, arguments);
-	}
+        _get(Object.getPrototypeOf(StringField.prototype), 'constructor', this).apply(this, arguments);
+    }
 
-	_createClass(StringField, [{
-		key: 'parse',
-		value: function parse(value) {
-			return String(value !== undefined ? value : '').trim();
-		}
-	}]);
+    _createClass(StringField, [{
+        key: 'parseValue',
+        value: function parseValue(value) {
+            return String(value !== undefined ? value : '').trim();
+        }
+    }]);
 
-	return StringField;
+    return StringField;
 })(Field);
 
 var BooleanField = (function (_Field2) {
-	_inherits(BooleanField, _Field2);
+    _inherits(BooleanField, _Field2);
 
-	function BooleanField() {
-		_classCallCheck(this, BooleanField);
+    function BooleanField() {
+        _classCallCheck(this, BooleanField);
 
-		_get(Object.getPrototypeOf(BooleanField.prototype), 'constructor', this).apply(this, arguments);
-	}
+        _get(Object.getPrototypeOf(BooleanField.prototype), 'constructor', this).apply(this, arguments);
+    }
 
-	_createClass(BooleanField, [{
-		key: 'parse',
-		value: function parse(value) {
-			return !!value;
-		}
-	}]);
+    _createClass(BooleanField, [{
+        key: 'parseValue',
+        value: function parseValue(value) {
+            return !!value;
+        }
+    }]);
 
-	return BooleanField;
+    return BooleanField;
 })(Field);
 
 var NumberField = (function (_Field3) {
-	_inherits(NumberField, _Field3);
+    _inherits(NumberField, _Field3);
 
-	function NumberField() {
-		_classCallCheck(this, NumberField);
+    function NumberField() {
+        _classCallCheck(this, NumberField);
 
-		_get(Object.getPrototypeOf(NumberField.prototype), 'constructor', this).apply(this, arguments);
-	}
+        _get(Object.getPrototypeOf(NumberField.prototype), 'constructor', this).apply(this, arguments);
+    }
 
-	_createClass(NumberField, [{
-		key: 'parse',
-		value: function parse(value) {
-			return value && Number(value) || 0;
-		}
-	}]);
+    _createClass(NumberField, [{
+        key: 'parseValue',
+        value: function parseValue(value) {
+            return value && Number(value) || 0;
+        }
+    }]);
 
-	return NumberField;
+    return NumberField;
 })(Field);
 
 var DateField = (function (_Field4) {
-	_inherits(DateField, _Field4);
+    _inherits(DateField, _Field4);
 
-	function DateField() {
-		_classCallCheck(this, DateField);
+    function DateField() {
+        _classCallCheck(this, DateField);
 
-		_get(Object.getPrototypeOf(DateField.prototype), 'constructor', this).apply(this, arguments);
-	}
+        _get(Object.getPrototypeOf(DateField.prototype), 'constructor', this).apply(this, arguments);
+    }
 
-	_createClass(DateField, [{
-		key: 'parse',
-		value: function parse(value) {
-			if (isFinite(value)) {
-				return new Date(value);
-			}
+    _createClass(DateField, [{
+        key: 'parseValue',
+        value: function parseValue(value) {
+            if (isFinite(value)) {
+                return new Date(value);
+            }
 
-			if (typeof value === 'string') {
-				var parsedTime = Date.parse(value);
-				if (!isFinite(parsedTime)) return null;
+            if (typeof value === 'string') {
+                var parsedTime = Date.parse(value);
+                if (!isFinite(parsedTime)) return null;
 
-				return new Date(parsedTime);
-			}
+                return new Date(parsedTime);
+            }
 
-			return null;
-		}
-	}]);
+            return null;
+        }
+    }]);
 
-	return DateField;
+    return DateField;
 })(Field);
 
 var CustomField = (function (_Field5) {
-	_inherits(CustomField, _Field5);
+    _inherits(CustomField, _Field5);
 
-	function CustomField() {
-		_classCallCheck(this, CustomField);
+    function CustomField() {
+        _classCallCheck(this, CustomField);
 
-		_get(Object.getPrototypeOf(CustomField.prototype), 'constructor', this).apply(this, arguments);
-	}
+        _get(Object.getPrototypeOf(CustomField.prototype), 'constructor', this).apply(this, arguments);
+    }
 
-	/**
-  * Default constructor/field for primitive values
-  */
+    /**
+     * Default constructor/field for primitive values
+     */
 
-	_createClass(CustomField, [{
-		key: 'parse',
-		value: function parse(value) {
-			return value !== null ? new this.type(value) : null;
-		}
-	}]);
+    _createClass(CustomField, [{
+        key: 'parseValue',
+        value: function parseValue(value) {
+            return value !== null ? new this.type(value) : null;
+        }
+    }]);
 
-	return CustomField;
+    return CustomField;
 })(Field);
 
 Field.register.set(String, StringField);
@@ -175,50 +203,50 @@ Field.register.set(Date, DateField);
  */
 
 var Model = (function () {
-	function Model() {
-		_classCallCheck(this, Model);
-	}
+    function Model() {
+        _classCallCheck(this, Model);
+    }
 
-	_createClass(Model, [{
-		key: 'toString',
-		value: function toString() {
-			return this.$$.name;
-		}
-	}, {
-		key: 'toJSON',
-		value: function toJSON() {
-			return Model.toJSON(this);
-		}
-	}]);
+    _createClass(Model, [{
+        key: 'toString',
+        value: function toString() {
+            return this.$$.name;
+        }
+    }, {
+        key: 'toJSON',
+        value: function toJSON() {
+            return Model.toJSON(this);
+        }
+    }]);
 
-	return Model;
+    return Model;
 })();
 
 Model.toJSON = function (model) {
-	var sources = [model.$$.data, model.$$.changed || {}];
-	var result = {};
+    var sources = [model.$$.data, model.$$.changed || {}];
+    var result = {};
 
-	sources.forEach(function (source) {
-		Object.keys(source).forEach(function (key) {
-			var value = source[key];
+    sources.forEach(function (source) {
+        Object.keys(source).forEach(function (key) {
+            var value = source[key];
 
-			if (Model.isModel(value)) {
-				value = value.toJSON();
-			}
+            if (Model.isModel(value)) {
+                value = value.toJSON();
+            }
 
-			if (value instanceof Date) {
-				value = value.toJSON();
-			}
+            if (value instanceof Date) {
+                value = value.toJSON();
+            }
 
-			result[key] = value;
-		});
-	});
+            result[key] = value;
+        });
+    });
 
-	return result;
+    return result;
 };
 
 Model.isModel = function (value) {
-	return value instanceof Model || typeof value === 'function' && value.__model__;
+    return value instanceof Model || typeof value === 'function' && value.__model__;
 };
 
 /**
@@ -226,56 +254,56 @@ Model.isModel = function (value) {
  * @param {Object} config 		Model configuration
  */
 Model.create = function createModel(config) {
-	var name = config.name || 'Model';
-	var fields = config.fields || [];
+    var name = config.name || 'Model';
+    var fields = config.fields || [];
 
-	var Constructor = function ModelClass(data) {
-		Model.initialize(this, Constructor);
-		Model.applyDefaultValues(this, Constructor);
-		Model.applyValues(this, Constructor, data);
-	};
+    var Constructor = function ModelClass(data) {
+        Model.initialize(this, Constructor);
+        Model.applyDefaultValues(this, Constructor);
+        Model.applyValues(this, Constructor, data);
+    };
 
-	var fieldNames = Object.keys(fields);
+    var fieldNames = Object.keys(fields);
 
-	// object format: { fieldName: 'self', otherField: String ... }
-	fields = fieldNames.map(function (key) {
-		return Model.createField(key, fields[key], Constructor);
-	});
+    // object format: { fieldName: 'self', otherField: String ... }
+    fields = fieldNames.map(function (key) {
+        return Model.createField(key, fields[key], Constructor);
+    });
 
-	var prototype = Object.create(Model.prototype);
-	prototype.constructor = Constructor;
-	Constructor.prototype = prototype;
+    var prototype = Object.create(Model.prototype);
+    prototype.constructor = Constructor;
+    Constructor.prototype = prototype;
 
-	var staticProperties = {
-		__fields__: fields,
-		__name__: name,
-		__model__: true
-	};
+    var staticProperties = {
+        __fields__: fields,
+        __name__: name,
+        __model__: true
+    };
 
-	Object.keys(staticProperties).forEach(function (key) {
-		Object.defineProperty(Constructor, key, {
-			value: staticProperties[key],
-			writable: false
-		});
-	});
+    Object.keys(staticProperties).forEach(function (key) {
+        Object.defineProperty(Constructor, key, {
+            value: staticProperties[key],
+            writable: false
+        });
+    });
 
-	var customMethods = config.methods;
+    var customMethods = config.methods;
 
-	if (customMethods) {
-		Object.keys(customMethods).forEach(function (name) {
-			if (fieldNames.indexOf(name) !== -1) {
-				throw new Error('Cannot override field ' + name + ' with a custom method of same name');
-			}
+    if (customMethods) {
+        Object.keys(customMethods).forEach(function (name) {
+            if (fieldNames.indexOf(name) !== -1) {
+                throw new Error('Cannot override field ' + name + ' with a custom method of same name');
+            }
 
-			var method = customMethods[name];
+            var method = customMethods[name];
 
-			Constructor.prototype[name] = function () {
-				method.apply(this, arguments);
-			};
-		});
-	}
+            Constructor.prototype[name] = function () {
+                method.apply(this, arguments);
+            };
+        });
+    }
 
-	return Constructor;
+    return Constructor;
 };
 
 /**
@@ -286,27 +314,27 @@ Model.create = function createModel(config) {
  * @param {Field} field 		Field instance
  */
 Model.defineProperty = function defineProperty(model, field) {
-	var name = field.name;
-	var getter = function getter() {
-		return model.$$.get(name);
-	};
+    var name = field.name;
+    var getter = function getter() {
+        return model.$$.get(name);
+    };
 
-	var setter = Model.noop;
+    var setter = Model.noop;
 
-	if (!field.readOnly) {
-		setter = function setter(value) {
-			value = field.parse(value);
-			model.$$.set(name, value);
-		};
-	}
+    if (!field.readOnly) {
+        setter = function setter(value) {
+            value = field.parse(value);
+            model.$$.set(name, value);
+        };
+    }
 
-	var descriptor = {
-		enumerable: true,
-		get: getter,
-		set: setter
-	};
+    var descriptor = {
+        enumerable: true,
+        get: getter,
+        set: setter
+    };
 
-	Object.defineProperty(model, name, descriptor);
+    Object.defineProperty(model, name, descriptor);
 };
 
 /**
@@ -316,28 +344,28 @@ Model.defineProperty = function defineProperty(model, field) {
  * @param {Function} Constructor 	Constructor of instance (a Function created with Model.create)
  */
 Model.initialize = function (model, Constructor) {
-	var fields = Constructor.__fields__;
+    var fields = Constructor.__fields__;
 
-	fields.forEach(function (field) {
-		Model.defineProperty(model, field);
-	});
+    fields.forEach(function (field) {
+        Model.defineProperty(model, field);
+    });
 
-	var modelInternals = ModelMethods.create(Constructor);
+    var modelInternals = ModelMethods.create(Constructor);
 
-	// Model methods
-	Object.defineProperty(model, '$$', {
-		enumerable: false,
-		value: modelInternals
-	});
+    // Model methods
+    Object.defineProperty(model, '$$', {
+        enumerable: false,
+        value: modelInternals
+    });
 
-	// Virtual property. Returns true if the model has any changes
-	Object.defineProperty(model, '$$dirty', {
-		enumerable: false,
-		set: Model.noop,
-		get: function get() {
-			return model.$$.changed !== false;
-		}
-	});
+    // Virtual property. Returns true if the model has any changes
+    Object.defineProperty(model, '$$dirty', {
+        enumerable: false,
+        set: Model.noop,
+        get: function get() {
+            return model.$$.changed !== false;
+        }
+    });
 };
 
 Model.noop = function noop() {};
@@ -349,36 +377,36 @@ Model.noop = function noop() {};
  * @param {Function} Constructor 	The model constructor which will use this field
  */
 Model.createField = function createField(name, config, Constructor) {
-	if (!config) {
-		throw new Error('Invalid field config', config);
-	}
+    if (!config) {
+        throw new Error('Invalid field config', config);
+    }
 
-	// replace the 'self' reference with the actual model Constructor
-	if (config === 'self') {
-		config = Constructor;
-	} else if (config.type === 'self') {
-		config.type = Constructor;
-	}
+    // replace the 'self' reference with the actual model Constructor
+    if (config === 'self') {
+        config = Constructor;
+    } else if (config.type === 'self') {
+        config.type = Constructor;
+    }
 
-	var type = typeof config;
-	var field = config;
+    var type = typeof config;
+    var field = config;
 
-	// field is a constructor
-	if (type === 'function') {
-		field = {
-			type: field
-		};
-	}
+    // field is a constructor
+    if (type === 'function') {
+        field = {
+            type: field
+        };
+    }
 
-	if (!field.name) {
-		field.name = name;
-	}
+    if (!field.name) {
+        field.name = name;
+    }
 
-	if (typeof field.type !== 'function') {
-		throw new Error('Invalid field type', field.type);
-	}
+    if (typeof field.type !== 'function') {
+        throw new Error('Invalid field type', field.type);
+    }
 
-	return Field.create(field);
+    return Field.create(field);
 };
 
 /**
@@ -388,13 +416,13 @@ Model.createField = function createField(name, config, Constructor) {
  * @param {*} value 			The value to apply (if name is a property)
  */
 Model.applyChanges = function (object, name, value) {
-	if (typeof name === 'object' && name) {
-		Object.keys(name).forEach(function (key) {
-			return object[key] = name[key];
-		});
-	} else {
-		object[name] = value;
-	}
+    if (typeof name === 'object' && name) {
+        Object.keys(name).forEach(function (key) {
+            return object[key] = name[key];
+        });
+    } else {
+        object[name] = value;
+    }
 };
 
 /**
@@ -403,11 +431,11 @@ Model.applyChanges = function (object, name, value) {
  * @param {Function} Constructor 	Constructor of model instance
  */
 Model.applyDefaultValues = function (model, Constructor) {
-	Constructor.__fields__.forEach(function (field) {
-		if ('default' in field) {
-			this.$$.setPersistent(field.name, field['default']);
-		}
-	}, model);
+    Constructor.__fields__.forEach(function (field) {
+        if ('default' in field) {
+            this.$$.setPersistent(field.name, field['default']);
+        }
+    }, model);
 };
 
 /**
@@ -416,74 +444,74 @@ Model.applyDefaultValues = function (model, Constructor) {
  * @param {Function} Constructor 	Constructor of model instance
  */
 Model.applyValues = function (model, Constructor, values) {
-	if (!values || typeof values !== 'object') return;
+    if (!values || typeof values !== 'object') return;
 
-	Constructor.__fields__.forEach(function (field) {
-		var name = field.name;
+    Constructor.__fields__.forEach(function (field) {
+        var name = field.name;
 
-		if (name in values) {
-			var value = field.parse(values[name]);
-			model.$$.setPersistent(name, value);
-		}
-	});
+        if (name in values) {
+            var value = field.parse(values[name]);
+            model.$$.setPersistent(name, value);
+        }
+    });
 };
 
 var ModelMethods = (function () {
-	function ModelMethods() {
-		_classCallCheck(this, ModelMethods);
-	}
+    function ModelMethods() {
+        _classCallCheck(this, ModelMethods);
+    }
 
-	/**
-  * Creates an instance of ModelMethods bound to Constructor
-  * to use as a base object for a model instance
-  */
+    /**
+     * Creates an instance of ModelMethods bound to Constructor
+     * to use as a base object for a model instance
+     */
 
-	_createClass(ModelMethods, [{
-		key: 'setPersistent',
-		value: function setPersistent(name, value) {
-			Model.applyChanges(this.data, name, value);
-		}
-	}, {
-		key: 'set',
-		value: function set(name, value) {
-			if (!this.changed) {
-				this.changed = {};
-			}
+    _createClass(ModelMethods, [{
+        key: 'setPersistent',
+        value: function setPersistent(name, value) {
+            Model.applyChanges(this.data, name, value);
+        }
+    }, {
+        key: 'set',
+        value: function set(name, value) {
+            if (!this.changed) {
+                this.changed = {};
+            }
 
-			Model.applyChanges(this.changed, name, value);
+            Model.applyChanges(this.changed, name, value);
 
-			return this;
-		}
-	}, {
-		key: 'get',
-		value: function get(name) {
-			return this.changed && name in this.changed ? this.changed[name] : this.data[name];
-		}
-	}, {
-		key: 'commit',
-		value: function commit() {
-			Model.applyChanges(this.data, this.changed);
-			this.changed = false;
-		}
-	}, {
-		key: 'rollback',
-		value: function rollback() {
-			this.changed = false;
-		}
-	}]);
+            return this;
+        }
+    }, {
+        key: 'get',
+        value: function get(name) {
+            return this.changed && name in this.changed ? this.changed[name] : this.data[name];
+        }
+    }, {
+        key: 'commit',
+        value: function commit() {
+            Model.applyChanges(this.data, this.changed);
+            this.changed = false;
+        }
+    }, {
+        key: 'rollback',
+        value: function rollback() {
+            this.changed = false;
+        }
+    }]);
 
-	return ModelMethods;
+    return ModelMethods;
 })();
 
 ModelMethods.create = function (Constructor) {
-	var methods = new ModelMethods();
+    var methods = new ModelMethods();
 
-	methods.data = {};
-	methods.changed = false;
-	methods.fields = Constructor.__fields__;
-	methods.name = Constructor.__name__;
+    methods.data = {};
+    methods.changed = false;
+    methods.fields = Constructor.__fields__;
+    methods.name = Constructor.__name__;
 
-	return methods;
+    return methods;
 };
 
 /**
