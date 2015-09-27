@@ -7,6 +7,10 @@ class Field {
         Object.keys(config).forEach((key) => this[key] = config[key]);
     }
 
+    validate(value) {
+        return (this.required && value === undefined) ? false : true;
+    }
+
     parse(value) {
         if (this.isArray) {
             return this.parseArray(value);
