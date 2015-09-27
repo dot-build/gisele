@@ -45,7 +45,8 @@ Model.toJSON = function (model) {
 };
 
 Model.isModel = function (value) {
-	return value instanceof Model;
+	return value instanceof Model ||
+		(typeof value === 'function' && value.__model__);
 };
 
 /**
@@ -296,3 +297,9 @@ ModelMethods.create = function(Constructor) {
 
 	return methods;
 };
+
+/**
+ * Model.fn
+ * Methods available on each model instance
+ */
+Model.fn = ModelMethods.prototype;

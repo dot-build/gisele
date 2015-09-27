@@ -99,7 +99,10 @@ describe('Model', function() {
 
 			// check writable = false
 			var invalidValue;
-			self.$$ = {};
+			try {
+				self.$$ = {};
+			} catch (e) {}
+
 			expect(self.$$).not.toBe(invalidValue);
 
 			// initial setup
@@ -217,6 +220,10 @@ describe('Model', function() {
 
 			// now the original data model is touched
 			expect(instance.name).toBe('New name');
+			expect(instance.$$dirty).toBe(false);
+
+			instance.$$dirty = true;
+			// ignore changes
 			expect(instance.$$dirty).toBe(false);
 
 			instance.name = 'Other name';
@@ -379,17 +386,17 @@ describe('Model', function() {
 
 			// toJSON() must save the relationships
 			expect(json).toEqual({
-				"name": "Jack Doe",
-				"age": 8,
-				"dateOfBirth": "2001-12-16T03:15:00.000Z",
-				"father": {
-					"name": "James"
+				'name': 'Jack Doe',
+				'age': 8,
+				'dateOfBirth': '2001-12-16T03:15:00.000Z',
+				'father': {
+					'name': 'James'
 				},
-				"mother": {
-					"name": "Jane Doe",
-					"age": 27
+				'mother': {
+					'name': 'Jane Doe',
+					'age': 27
 				}
-			})
+			});
 		});
 	});
 
@@ -424,6 +431,22 @@ describe('Model', function() {
 			instance.bar();
 			// calls rollback() internally
 			expect(instance.name).toBe('test');
+		});
+
+		it('should NOT allow custom methods that conflict with properties', function() {
+			function test() {
+				Model.create({
+					fields: {
+						foo: String
+					},
+
+					methods: {
+						foo: function() {}
+					}
+				});
+			}
+
+			expect(test).toThrow(new Error('Cannot override field foo with a custom method of same name'));
 		});
 	});
 });

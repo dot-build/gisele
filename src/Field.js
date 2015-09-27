@@ -12,23 +12,13 @@ class Field {
 	}
 }
 
+Field.register = new Map();
+
 Field.create = function(config) {
-	switch (config.type) {
-		case String:
-			return new StringField(config);
+	let type = config.type;
+	let FieldConstructor = Field.register.get(type) || CustomField;
 
-		case Number:
-			return new NumberField(config);
-
-		case Boolean:
-			return new BooleanField(config);
-
-		case Date:
-			return new DateField(config);
-
-		default:
-			return new CustomField(config);
-	}
+	return new FieldConstructor(config);
 };
 
 class StringField extends Field {
@@ -57,6 +47,8 @@ class DateField extends Field {
 
 		if (typeof value === 'string') {
 			let parsedTime = Date.parse(value);
+			if (!isFinite(parsedTime)) return null;
+
 			return new Date(parsedTime);
 		}
 
@@ -69,3 +61,11 @@ class CustomField extends Field {
 		return value !== null ? new this.type(value) : null;
 	}
 }
+
+/**
+ * Default constructor/field for primitive values
+ */
+Field.register.set(String, StringField);
+Field.register.set(Number, NumberField);
+Field.register.set(Boolean, BooleanField);
+Field.register.set(Date, DateField);

@@ -2,7 +2,6 @@
 'use strict';
 
 var gulp = require('gulp'),
-	karma = require('karma').server,
 	version = require('./package.json').version;
 
 function buildRelease() {
@@ -12,15 +11,17 @@ function buildRelease() {
 		concat = require('gulp-concat'),
 		rename = require('gulp-rename'),
 		wrap = require('gulp-wrap'),
-		babelOptions = require(__dirname + '/babel-options.js');
+		babelOptions = require(__dirname + '/babel-options.js'),
+		wrapper = require('fs').readFileSync(__dirname + '/build.template.js', 'utf8');
 
+	wrapper = wrapper.replace('/* content goes here */', '<%='+' contents %>');
 	console.log('Building version ' + version);
 
 	multipipe(
 		gulp.src('src/**/*.js'),
 		concat('gisele.js'),
 		babel(babelOptions),
-		wrap({ src: __dirname + '/build.template.js'}),
+		wrap(wrapper),
 		gulp.dest('dist'),
 		uglify(),
 		rename({ suffix: '.min' }),
@@ -29,27 +30,14 @@ function buildRelease() {
 	);
 }
 
-function runTests(done) {
-	karma.start({
-		configFile: __dirname + '/karma.conf.js',
-		singleRun: true
-	}, done);
-}
-
-function tdd(done) {
-	karma.start({
-		configFile: __dirname + '/karma.conf.js'
-	}, done);
-}
-
 function onError(err) {
 	if (err) {
-		console.warn(err.message || err);
+		console.warn('ERROR: ' + err.message || err);
 		if (err.stack) console.log(err.stack);
+		return;
 	}
+
+	console.log('Done.');
 }
 
-gulp.task('build', ['test'], buildRelease);
-gulp.task('tdd', tdd);
-gulp.task('test', runTests);
-gulp.task('default', ['tdd']);
+gulp.task('build', buildRelease);

@@ -69,6 +69,21 @@ describe('NumberField', function() {
 	});
 });
 
+describe('DateField', function() {
+	describe('#parse(value)', function () {
+		it('should cast the value to boolean', function () {
+			var field = new DateField({});
+			var validDate = new Date(Date.parse('2011-01-10T00:00:00.000Z'));
+			var validTimestamp = new Date(1e7);
+
+			expect(field.parse('2011-01-10T00:00:00.000Z')).toEqual(validDate);
+			expect(field.parse(1e7)).toEqual(validTimestamp);
+			expect(field.parse('invalid')).toBe(null);
+			expect(field.parse({})).toBe(null);
+		});
+	});
+});
+
 describe('CustomField', function() {
 	describe('#parse(value)', function () {
 		it('should return null if the value is null and the field type is a Model', function () {

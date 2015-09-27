@@ -1,17 +1,11 @@
 (function(global) {
 	'use strict';
 
-	<%= contents %>
+	/* content goes here */
 
 	var Gisele = {
 		Model: Model,
-		ModelMethods: ModelMethods,
-
-		Field: Field,
-		StringField: StringField,
-		BooleanField: BooleanField,
-		NumberField: NumberField,
-		CustomField: CustomField
+		Field: Field
 	};
 
 	if (typeof define === 'function' && define.amd) {
