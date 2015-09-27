@@ -2,7 +2,7 @@
 	"name": "gisele",
 	"description": "A data model library",
 	"version": "0.1.0",
-	"main": "src/gisele.js",
+	"main": "dist/gisele.js",
 	"author": {
 		"name": "Darlan Alves",
 		"email": "me@darlanalv.es"

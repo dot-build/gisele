@@ -1,6 +1,8 @@
 (function(global) {
 	'use strict';
 
+	<%= contents %>
+
 	var Gisele = {
 		Model: Model,
 		ModelMethods: ModelMethods,
@@ -11,8 +13,6 @@
 		NumberField: NumberField,
 		CustomField: CustomField
 	};
-
-	<%= contents %>
 
 	if (typeof define === 'function' && define.amd) {
 		define(function() {

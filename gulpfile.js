@@ -8,9 +8,9 @@ var gulp = require('gulp'),
 function buildRelease() {
 	var uglify = require('gulp-uglify'),
 		multipipe = require('multipipe'),
-		sourcemaps = require('gulp-sourcemaps'),
 		babel = require('gulp-babel'),
 		concat = require('gulp-concat'),
+		rename = require('gulp-rename'),
 		wrap = require('gulp-wrap'),
 		babelOptions = require(__dirname + '/babel-options.js');
 
@@ -20,10 +20,10 @@ function buildRelease() {
 		gulp.src('src/**/*.js'),
 		concat('gisele.js'),
 		babel(babelOptions),
-		// sourcemaps.init(),
 		wrap({ src: __dirname + '/build.template.js'}),
+		gulp.dest('dist'),
 		uglify(),
-		// sourcemaps.write('.'),
+		rename({ suffix: '.min' }),
 		gulp.dest('dist'),
 		onError
 	);

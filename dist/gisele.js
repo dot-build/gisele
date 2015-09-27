@@ -1,1 +1,509 @@
-!function(e){"use strict";function t(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}function n(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}var r={Model:p,ModelMethods:y,Field:a,StringField:u,BooleanField:c,NumberField:f,CustomField:l},o=function(e,t,n){for(var r=!0;r;){var o=e,i=t,a=n;u=f=c=void 0,r=!1,null===o&&(o=Function.prototype);var u=Object.getOwnPropertyDescriptor(o,i);if(void 0!==u){if("value"in u)return u.value;var c=u.get;return void 0===c?void 0:c.call(a)}var f=Object.getPrototypeOf(o);if(null===f)return void 0;e=f,t=i,n=a,r=!0}},i=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),a=function(){function e(t){var r=this;if(n(this,e),!t)throw new Error("Invalid field config");Object.keys(t).forEach(function(e){return r[e]=t[e]})}return i(e,[{key:"parse",value:function(e){return e}}]),e}();a.create=function(e){switch(e.type){case String:return new u(e);case Number:return new f(e);case Boolean:return new c(e);case Date:return new s(e);default:return new l(e)}};var u=function(e){function r(){n(this,r),o(Object.getPrototypeOf(r.prototype),"constructor",this).apply(this,arguments)}return t(r,e),i(r,[{key:"parse",value:function(e){return String(void 0!==e?e:"").trim()}}]),r}(a),c=function(e){function r(){n(this,r),o(Object.getPrototypeOf(r.prototype),"constructor",this).apply(this,arguments)}return t(r,e),i(r,[{key:"parse",value:function(e){return!!e}}]),r}(a),f=function(e){function r(){n(this,r),o(Object.getPrototypeOf(r.prototype),"constructor",this).apply(this,arguments)}return t(r,e),i(r,[{key:"parse",value:function(e){return e&&Number(e)||0}}]),r}(a),s=function(e){function r(){n(this,r),o(Object.getPrototypeOf(r.prototype),"constructor",this).apply(this,arguments)}return t(r,e),i(r,[{key:"parse",value:function(e){if(isFinite(e))return new Date(e);if("string"==typeof e){var t=Date.parse(e);return new Date(t)}return null}}]),r}(a),l=function(e){function r(){n(this,r),o(Object.getPrototypeOf(r.prototype),"constructor",this).apply(this,arguments)}return t(r,e),i(r,[{key:"parse",value:function(e){return null!==e?new this.type(e):null}}]),r}(a),p=function(){function e(){n(this,e)}return i(e,[{key:"toString",value:function(){return this.$$.name}},{key:"toJSON",value:function(){return e.toJSON(this)}}]),e}();p.toJSON=function(e){var t=[e.$$.data,e.$$.changed||{}],n={};return t.forEach(function(e){Object.keys(e).forEach(function(t){var r=e[t];p.isModel(r)&&(r=r.toJSON()),r instanceof Date&&(r=r.toJSON()),n[t]=r})}),n},p.isModel=function(e){return e instanceof p},p.create=function(e){var t=e.name||"Model",n=e.fields||[],r=function(e){p.initialize(this,r),p.applyDefaultValues(this,r),p.applyValues(this,r,e)},o=Object.keys(n);n=o.map(function(e){return p.createField(e,n[e],r)});var i=Object.create(p.prototype);i.constructor=r,r.prototype=i;var a={__fields__:n,__name__:t,__model__:!0};Object.keys(a).forEach(function(e){Object.defineProperty(r,e,{value:a[e],writable:!1})});var u=e.methods;return u&&Object.keys(u).forEach(function(e){if(-1!==o.indexOf(e))throw new Error("Cannot override field "+e+" with a custom method of same name");var t=u[e];r.prototype[e]=function(){t.apply(this,arguments)}}),r},p.defineProperty=function(e,t){var n=t.name,r=function(){return e.$$.get(n)},o=p.noop;t.readOnly||(o=function(r){r=t.parse(r),e.$$.set(n,r)});var i={enumerable:!0,get:r,set:o};Object.defineProperty(e,n,i)},p.initialize=function(e,t){var n=t.__fields__;n.forEach(function(t){p.defineProperty(e,t)});var r=y.create(t);Object.defineProperty(e,"$$",{enumerable:!1,value:r}),Object.defineProperty(e,"$$dirty",{enumerable:!1,set:p.noop,get:function(){return e.$$.changed!==!1}})},p.noop=function(){},p.createField=function(e,t,n){if(!t)throw new Error("Invalid field config",t);"self"===t?t=n:"self"===t.type&&(t.type=n);var r=typeof t,o=t;if("function"===r&&(o={type:o}),o.name||(o.name=e),"function"!=typeof o.type)throw new Error("Invalid field type",o.type);return a.create(o)},p.applyChanges=function(e,t,n){"object"==typeof t&&t?Object.keys(t).forEach(function(n){return e[n]=t[n]}):e[t]=n},p.applyDefaultValues=function(e,t){t.__fields__.forEach(function(e){"default"in e&&this.$$.setPersistent(e.name,e["default"])},e)},p.applyValues=function(e,t,n){n&&"object"==typeof n&&t.__fields__.forEach(function(t){var r=t.name;if(r in n){var o=t.parse(n[r]);e.$$.setPersistent(r,o)}})};var y=function(){function e(){n(this,e)}return i(e,[{key:"setPersistent",value:function(e,t){p.applyChanges(this.data,e,t)}},{key:"set",value:function(e,t){return this.changed||(this.changed={}),p.applyChanges(this.changed,e,t),this}},{key:"get",value:function(e){return this.changed&&e in this.changed?this.changed[e]:this.data[e]}},{key:"commit",value:function(){p.applyChanges(this.data,this.changed),this.changed=!1}},{key:"rollback",value:function(){this.changed=!1}}]),e}();y.create=function(e){var t=new y;return t.data={},t.changed=!1,t.fields=e.__fields__,t.name=e.__name__,t},"function"==typeof define&&define.amd?define(function(){return r}):"undefined"!=typeof module&&module.exports?module.exports=r:e.Gisele=r}(this);
+(function(global) {
+	'use strict';
+
+	'use strict';
+
+var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+
+var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+
+var Field = (function () {
+	function Field(config) {
+		var _this = this;
+
+		_classCallCheck(this, Field);
+
+		if (!config) {
+			throw new Error('Invalid field config');
+		}
+
+		Object.keys(config).forEach(function (key) {
+			return _this[key] = config[key];
+		});
+	}
+
+	_createClass(Field, [{
+		key: 'parse',
+		value: function parse(value) {
+			return value;
+		}
+	}]);
+
+	return Field;
+})();
+
+Field.create = function (config) {
+	switch (config.type) {
+		case String:
+			return new StringField(config);
+
+		case Number:
+			return new NumberField(config);
+
+		case Boolean:
+			return new BooleanField(config);
+
+		case Date:
+			return new DateField(config);
+
+		default:
+			return new CustomField(config);
+	}
+};
+
+var StringField = (function (_Field) {
+	_inherits(StringField, _Field);
+
+	function StringField() {
+		_classCallCheck(this, StringField);
+
+		_get(Object.getPrototypeOf(StringField.prototype), 'constructor', this).apply(this, arguments);
+	}
+
+	_createClass(StringField, [{
+		key: 'parse',
+		value: function parse(value) {
+			return String(value !== undefined ? value : '').trim();
+		}
+	}]);
+
+	return StringField;
+})(Field);
+
+var BooleanField = (function (_Field2) {
+	_inherits(BooleanField, _Field2);
+
+	function BooleanField() {
+		_classCallCheck(this, BooleanField);
+
+		_get(Object.getPrototypeOf(BooleanField.prototype), 'constructor', this).apply(this, arguments);
+	}
+
+	_createClass(BooleanField, [{
+		key: 'parse',
+		value: function parse(value) {
+			return !!value;
+		}
+	}]);
+
+	return BooleanField;
+})(Field);
+
+var NumberField = (function (_Field3) {
+	_inherits(NumberField, _Field3);
+
+	function NumberField() {
+		_classCallCheck(this, NumberField);
+
+		_get(Object.getPrototypeOf(NumberField.prototype), 'constructor', this).apply(this, arguments);
+	}
+
+	_createClass(NumberField, [{
+		key: 'parse',
+		value: function parse(value) {
+			return value && Number(value) || 0;
+		}
+	}]);
+
+	return NumberField;
+})(Field);
+
+var DateField = (function (_Field4) {
+	_inherits(DateField, _Field4);
+
+	function DateField() {
+		_classCallCheck(this, DateField);
+
+		_get(Object.getPrototypeOf(DateField.prototype), 'constructor', this).apply(this, arguments);
+	}
+
+	_createClass(DateField, [{
+		key: 'parse',
+		value: function parse(value) {
+			if (isFinite(value)) {
+				return new Date(value);
+			}
+
+			if (typeof value === 'string') {
+				var parsedTime = Date.parse(value);
+				return new Date(parsedTime);
+			}
+
+			return null;
+		}
+	}]);
+
+	return DateField;
+})(Field);
+
+var CustomField = (function (_Field5) {
+	_inherits(CustomField, _Field5);
+
+	function CustomField() {
+		_classCallCheck(this, CustomField);
+
+		_get(Object.getPrototypeOf(CustomField.prototype), 'constructor', this).apply(this, arguments);
+	}
+
+	/* globals Field */
+	/**
+  * @class Model
+  *
+  * Model layout:
+  *
+  * 		model = {
+  * 			$$: {}					// model methods (instance of ModelMethods class)
+  * 			$$dirty: Boolean		// true if the model has changes to save
+  *
+  * 			// ... properties and custom methods
+  * 		}
+  */
+
+	_createClass(CustomField, [{
+		key: 'parse',
+		value: function parse(value) {
+			return value !== null ? new this.type(value) : null;
+		}
+	}]);
+
+	return CustomField;
+})(Field);
+
+var Model = (function () {
+	function Model() {
+		_classCallCheck(this, Model);
+	}
+
+	_createClass(Model, [{
+		key: 'toString',
+		value: function toString() {
+			return this.$$.name;
+		}
+	}, {
+		key: 'toJSON',
+		value: function toJSON() {
+			return Model.toJSON(this);
+		}
+	}]);
+
+	return Model;
+})();
+
+Model.toJSON = function (model) {
+	var sources = [model.$$.data, model.$$.changed || {}];
+	var result = {};
+
+	sources.forEach(function (source) {
+		Object.keys(source).forEach(function (key) {
+			var value = source[key];
+
+			if (Model.isModel(value)) {
+				value = value.toJSON();
+			}
+
+			if (value instanceof Date) {
+				value = value.toJSON();
+			}
+
+			result[key] = value;
+		});
+	});
+
+	return result;
+};
+
+Model.isModel = function (value) {
+	return value instanceof Model;
+};
+
+/**
+ * Creates a new Model constructor using the given config
+ * @param {Object} config 		Model configuration
+ */
+Model.create = function createModel(config) {
+	var name = config.name || 'Model';
+	var fields = config.fields || [];
+
+	var Constructor = function ModelClass(data) {
+		Model.initialize(this, Constructor);
+		Model.applyDefaultValues(this, Constructor);
+		Model.applyValues(this, Constructor, data);
+	};
+
+	var fieldNames = Object.keys(fields);
+
+	// object format: { fieldName: 'self', otherField: String ... }
+	fields = fieldNames.map(function (key) {
+		return Model.createField(key, fields[key], Constructor);
+	});
+
+	var prototype = Object.create(Model.prototype);
+	prototype.constructor = Constructor;
+	Constructor.prototype = prototype;
+
+	var staticProperties = {
+		__fields__: fields,
+		__name__: name,
+		__model__: true
+	};
+
+	Object.keys(staticProperties).forEach(function (key) {
+		Object.defineProperty(Constructor, key, {
+			value: staticProperties[key],
+			writable: false
+		});
+	});
+
+	var customMethods = config.methods;
+
+	if (customMethods) {
+		Object.keys(customMethods).forEach(function (name) {
+			if (fieldNames.indexOf(name) !== -1) {
+				throw new Error('Cannot override field ' + name + ' with a custom method of same name');
+			}
+
+			var method = customMethods[name];
+
+			Constructor.prototype[name] = function () {
+				method.apply(this, arguments);
+			};
+		});
+	}
+
+	return Constructor;
+};
+
+/**
+ * Defines a model property based on settings of a Field instance
+ * Adds getter/setter to read/write on internal model object
+ *
+ * @param {Object} model 		Model instance
+ * @param {Field} field 		Field instance
+ */
+Model.defineProperty = function defineProperty(model, field) {
+	var name = field.name;
+	var getter = function getter() {
+		return model.$$.get(name);
+	};
+
+	var setter = Model.noop;
+
+	if (!field.readOnly) {
+		setter = function setter(value) {
+			value = field.parse(value);
+			model.$$.set(name, value);
+		};
+	}
+
+	var descriptor = {
+		enumerable: true,
+		get: getter,
+		set: setter
+	};
+
+	Object.defineProperty(model, name, descriptor);
+};
+
+/**
+ * Initialize a model instance
+ *
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	Constructor of instance (a Function created with Model.create)
+ */
+Model.initialize = function (model, Constructor) {
+	var fields = Constructor.__fields__;
+
+	fields.forEach(function (field) {
+		Model.defineProperty(model, field);
+	});
+
+	var modelInternals = ModelMethods.create(Constructor);
+
+	// Model methods
+	Object.defineProperty(model, '$$', {
+		enumerable: false,
+		value: modelInternals
+	});
+
+	// Virtual property. Returns true if the model has any changes
+	Object.defineProperty(model, '$$dirty', {
+		enumerable: false,
+		set: Model.noop,
+		get: function get() {
+			return model.$$.changed !== false;
+		}
+	});
+};
+
+Model.noop = function noop() {};
+
+/**
+ * Create and return a model field instance
+ * @param {String} name 			Field name
+ * @param {Object} config 			Field config
+ * @param {Function} Constructor 	The model constructor which will use this field
+ */
+Model.createField = function createField(name, config, Constructor) {
+	if (!config) {
+		throw new Error('Invalid field config', config);
+	}
+
+	// replace the 'self' reference with the actual model Constructor
+	if (config === 'self') {
+		config = Constructor;
+	} else if (config.type === 'self') {
+		config.type = Constructor;
+	}
+
+	var type = typeof config;
+	var field = config;
+
+	// field is a constructor
+	if (type === 'function') {
+		field = {
+			type: field
+		};
+	}
+
+	if (!field.name) {
+		field.name = name;
+	}
+
+	if (typeof field.type !== 'function') {
+		throw new Error('Invalid field type', field.type);
+	}
+
+	return Field.create(field);
+};
+
+/**
+ * Apply a change to an object or a set of changes
+ * @param {Object} object 		The target object
+ * @param {String|Object}		Property name, or an object with changes
+ * @param {*} value 			The value to apply (if name is a property)
+ */
+Model.applyChanges = function (object, name, value) {
+	if (typeof name === 'object' && name) {
+		Object.keys(name).forEach(function (key) {
+			return object[key] = name[key];
+		});
+	} else {
+		object[name] = value;
+	}
+};
+
+/**
+ * Apply default values (defined on model fields) to model instance
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	Constructor of model instance
+ */
+Model.applyDefaultValues = function (model, Constructor) {
+	Constructor.__fields__.forEach(function (field) {
+		if ('default' in field) {
+			this.$$.setPersistent(field.name, field['default']);
+		}
+	}, model);
+};
+
+/**
+ * Apply a set of values to a model instance
+ * @param {Object} model 			Model instance
+ * @param {Function} Constructor 	Constructor of model instance
+ */
+Model.applyValues = function (model, Constructor, values) {
+	if (!values || typeof values !== 'object') return;
+
+	Constructor.__fields__.forEach(function (field) {
+		var name = field.name;
+
+		if (name in values) {
+			var value = field.parse(values[name]);
+			model.$$.setPersistent(name, value);
+		}
+	});
+};
+
+var ModelMethods = (function () {
+	function ModelMethods() {
+		_classCallCheck(this, ModelMethods);
+	}
+
+	/**
+  * Creates an instance of ModelMethods bound to Constructor
+  * to use as a base object for a model instance
+  */
+
+	_createClass(ModelMethods, [{
+		key: 'setPersistent',
+		value: function setPersistent(name, value) {
+			Model.applyChanges(this.data, name, value);
+		}
+	}, {
+		key: 'set',
+		value: function set(name, value) {
+			if (!this.changed) {
+				this.changed = {};
+			}
+
+			Model.applyChanges(this.changed, name, value);
+
+			return this;
+		}
+	}, {
+		key: 'get',
+		value: function get(name) {
+			return this.changed && name in this.changed ? this.changed[name] : this.data[name];
+		}
+	}, {
+		key: 'commit',
+		value: function commit() {
+			Model.applyChanges(this.data, this.changed);
+			this.changed = false;
+		}
+	}, {
+		key: 'rollback',
+		value: function rollback() {
+			this.changed = false;
+		}
+	}]);
+
+	return ModelMethods;
+})();
+
+ModelMethods.create = function (Constructor) {
+	var methods = new ModelMethods();
+
+	methods.data = {};
+	methods.changed = false;
+	methods.fields = Constructor.__fields__;
+	methods.name = Constructor.__name__;
+
+	return methods;
+};
+
+	var Gisele = {
+		Model: Model,
+		ModelMethods: ModelMethods,
+
+		Field: Field,
+		StringField: StringField,
+		BooleanField: BooleanField,
+		NumberField: NumberField,
+		CustomField: CustomField
+	};
+
+	if (typeof define === 'function' && define.amd) {
+		define(function() {
+			return Gisele;
+		});
+	} else if (typeof module !== 'undefined' && module.exports) {
+		module.exports = Gisele;
+	} else {
+		global.Gisele = Gisele;
+	}
+
+})(this);
