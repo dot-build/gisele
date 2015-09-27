@@ -15,7 +15,38 @@ class Model {
 	toString() {
 		return this.$$.name;
 	}
+
+	toJSON() {
+		return Model.toJSON(this);
+	}
 }
+
+Model.toJSON = function (model) {
+	var sources = [model.$$.data, model.$$.changed || {}];
+	var result = {};
+
+	sources.forEach(function (source) {
+		Object.keys(source).forEach(function (key) {
+			let value = source[key];
+
+			if (Model.isModel(value)) {
+				value = value.toJSON();
+			}
+
+			if (value instanceof Date) {
+				value = value.toJSON();
+			}
+
+			result[key] = value;
+		});
+	});
+
+	return result;
+};
+
+Model.isModel = function (value) {
+	return value instanceof Model;
+};
 
 /**
  * Creates a new Model constructor using the given config

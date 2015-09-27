@@ -90,7 +90,7 @@ describe('Model', function() {
 		it('should configure a model instance (properties and model methods)', function() {
 			var self = {};
 
-			var Ctor = function () {};
+			var Ctor = function() {};
 			Ctor.__fields__ = [];
 
 			Model.initialize(self, Ctor);
@@ -119,28 +119,32 @@ describe('Model', function() {
 
 		it('should throw an error if the type is not valid', function() {
 			function test() {
-				Model.createField('foo', { type: {} });
+				Model.createField('foo', {
+					type: {}
+				});
 			}
 
 			expect(test).toThrow(Error('Invalid field type'));
 		});
 
 		it('should replace a circular reference with the model constructor', function() {
-			function Constructor () {}
+			function Constructor() {}
 
 			var field = Model.createField('test', 'self', Constructor);
 
 			expect(field instanceof Field).toBe(true);
 			expect(field.type).toBe(Constructor);
 
-			field = Model.createField('test', {type: 'self'}, Constructor);
+			field = Model.createField('test', {
+				type: 'self'
+			}, Constructor);
 
 			expect(field instanceof Field).toBe(true);
 			expect(field.type).toBe(Constructor);
 		});
 
 		it('should return an instance of Field', function() {
-			function Constructor () {}
+			function Constructor() {}
 
 			var customField = Model.createField('age', 'self', Constructor);
 			expect(customField.name).toBe('age');
@@ -149,7 +153,7 @@ describe('Model', function() {
 	});
 
 	describe('::applyValues(model, Constructor, data)', function() {
-		it('should apply a set of values to a model instance using the field constructors', function () {
+		it('should apply a set of values to a model instance using the field constructors', function() {
 			var Person = createModel();
 
 			var TestModel = Model.create({
@@ -189,7 +193,7 @@ describe('Model', function() {
 	});
 
 	describe('Model methods', function() {
-		it('should handle model changes', function () {
+		it('should handle model changes', function() {
 			var data = {
 				name: 'Paul'
 			};
@@ -254,7 +258,7 @@ describe('Model', function() {
 	});
 
 	describe('#toString()', function() {
-		it('should return the model name', function () {
+		it('should return the model name', function() {
 			var Person = createModel();
 			var instance = new Person(null);
 
@@ -263,26 +267,58 @@ describe('Model', function() {
 	});
 
 	describe('#toJSON()', function() {
-		it('should ', function () {
-			var Person = createModel();
+		it('should mix changed state and model data into one object and return it', function() {
+			var Person = Model.create({
+				name: 'Person',
+				fields: {
+					gender: {
+						type: String,
+						default: 'male'
+					},
+					age: Number,
+					name: String
+				}
+			});
 
 			var instance = new Person({
 				name: 'John',
 				age: 20
 			});
 
-			console.log(instance);
+			instance.name = 'Peter';
+
+			var json = instance.toJSON();
+
+			expect(json).toEqual({
+				// dirty value
+				name: 'Peter',
+
+				// construction data
+				age: 20,
+
+				// default value
+				gender: 'male'
+			});
 		});
 	});
 
 	describe('default values on fields', function() {
-		it('should initialize field values with their defaults but still apply data at construction', function () {
+		it('should initialize field values with their defaults but still apply data at construction', function() {
 			var Orange = Model.create({
 				name: 'Orange',
 				fields: {
-					color: { type: String, default: 'orange' },
-					calories: { type: Number, default: 100 },
-					isFruit: { type: Boolean, default: true },
+					color: {
+						type: String,
+						default: 'orange'
+					},
+					calories: {
+						type: Number,
+						default: 100
+					},
+					isFruit: {
+						type: Boolean,
+						default: true
+					},
 				}
 			});
 
@@ -331,11 +367,34 @@ describe('Model', function() {
 			expect(jack instanceof Person).toBe(true);
 			expect(jack.father instanceof Person).toBe(true);
 			expect(jack.mother instanceof Person).toBe(true);
+
+			// replaces the instance of Person with another one on update
+			jack.father = {
+				name: 'James'
+			};
+
+			expect(jack.father instanceof Person).toBe(true);
+
+			var json = jack.toJSON();
+
+			// toJSON() must save the relationships
+			expect(json).toEqual({
+				"name": "Jack Doe",
+				"age": 8,
+				"dateOfBirth": "2001-12-16T03:15:00.000Z",
+				"father": {
+					"name": "James"
+				},
+				"mother": {
+					"name": "Jane Doe",
+					"age": 27
+				}
+			})
 		});
 	});
 
 	describe('custom methods', function() {
-		it('should allow custom methods to be added on models', function () {
+		it('should allow custom methods to be added on models', function() {
 			var MyModel = Model.create({
 				name: 'Foo',
 
