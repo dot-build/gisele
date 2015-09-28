@@ -59,6 +59,14 @@ describe('Model', function() {
             expect(instance instanceof Person).toBe(true);
             expect(instance instanceof Model).toBe(true);
         });
+
+        it('should throw an error if no config was provided', function () {
+            function test () {
+                Model.create();
+            }
+
+            expect(test).toThrow(new Error('Invalid model configuration'));
+        });
     });
 
     describe('::defineProperty(name, field)', function() {

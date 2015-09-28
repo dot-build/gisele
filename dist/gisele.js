@@ -257,7 +257,7 @@ Model.toJSON = function (model) {
         var value = undefined;
 
         if (name in data) {
-            value = field.toJSON(data[name]);
+            value = Model.fieldToJSON(field, data[name]);
         }
 
         if (value !== undefined) {
@@ -270,6 +270,14 @@ Model.toJSON = function (model) {
     return result;
 };
 
+Model.fieldToJSON = function (field, value) {
+    if (field.isArray) {
+        return value.map(field.toJSON);
+    }
+
+    return field.toJSON(value);
+};
+
 Model.isModel = function (value) {
     return value instanceof Model;
 };
@@ -279,10 +287,22 @@ Model.isModel = function (value) {
  * @param {Object} config       Model configuration
  */
 Model.create = function createModel(config) {
-    var name = config.name || 'Model';
-    var fields = config.fields || [];
+    if (typeof config !== 'object') {
+        throw new Error('Invalid model configuration');
+    }
 
-    var Constructor = function ModelClass(data) {
+    var name, fields, customMethods;
+
+    if (config.fields) {
+        name = config.name || 'Model';
+        fields = config.fields || {};
+        customMethods = config.methods;
+    } else {
+        name = 'Model';
+        fields = config;
+    }
+
+    var Constructor = function Gisele(data) {
         Model.initialize(this, Constructor);
         Model.applyDefaultValues(this, Constructor);
         Model.applyValues(this, data);
@@ -311,19 +331,13 @@ Model.create = function createModel(config) {
         });
     });
 
-    var customMethods = config.methods;
-
     if (customMethods) {
         Object.keys(customMethods).forEach(function (name) {
             if (fieldNames.indexOf(name) !== -1) {
                 throw new Error('Cannot override field ' + name + ' with a custom method of same name');
             }
 
-            var method = customMethods[name];
-
-            Constructor.prototype[name] = function () {
-                method.apply(this, arguments);
-            };
+            Constructor.prototype[name] = customMethods[name];
         });
     }
 
