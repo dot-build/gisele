@@ -82,11 +82,23 @@ class DateField extends Field {
 
         return null;
     }
+
+    toJSON(value) {
+        return value instanceof Date ? value.toJSON() : undefined;
+    }
 }
 
 class CustomField extends Field {
     parseValue(value) {
         return value !== null ? new this.type(value) : null;
+    }
+
+    toJSON(value) {
+        if (value && typeof value.toJSON === 'function') {
+            return value.toJSON();
+        }
+
+        return value;
     }
 }
 

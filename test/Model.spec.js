@@ -303,13 +303,19 @@ describe('Model', function() {
                         default: 'male'
                     },
                     age: Number,
-                    name: String
+                    name: String,
+                    father: 'self'
                 }
             });
 
             var instance = new Person({
                 name: 'John',
-                age: 20
+                age: 20,
+
+                father: {
+                    name: 'Tom',
+                    age: 10
+                }
             });
 
             instance.name = 'Peter';
@@ -324,7 +330,14 @@ describe('Model', function() {
                 age: 20,
 
                 // default value
-                gender: 'male'
+                gender: 'male',
+
+                // submodel
+                father: {
+                    name: 'Tom',
+                    age: 10,
+                    gender: 'male'
+                }
             });
         });
     });

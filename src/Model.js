@@ -29,11 +29,7 @@ Model.toJSON = function(model) {
         Object.keys(source).forEach(function(key) {
             let value = source[key];
 
-            if (Model.isModel(value)) {
-                value = value.toJSON();
-            }
-
-            if (value instanceof Date) {
+            if (typeof value === 'object' && typeof value.toJSON === 'function') {
                 value = value.toJSON();
             }
 
@@ -45,8 +41,7 @@ Model.toJSON = function(model) {
 };
 
 Model.isModel = function(value) {
-    return value instanceof Model ||
-        (typeof value === 'function' && value.__model__);
+    return value instanceof Model;
 };
 
 /**
