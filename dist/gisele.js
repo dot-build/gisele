@@ -87,6 +87,11 @@ var StringField = (function (_Field) {
         value: function parseValue(value) {
             return String(value !== undefined ? value : '').trim();
         }
+    }, {
+        key: 'toJSON',
+        value: function toJSON(value) {
+            return typeof value !== 'object' ? String(value) : undefined;
+        }
     }]);
 
     return StringField;
@@ -155,6 +160,11 @@ var DateField = (function (_Field4) {
 
             return null;
         }
+    }, {
+        key: 'toJSON',
+        value: function toJSON(value) {
+            return value instanceof Date ? value.toJSON() : undefined;
+        }
     }]);
 
     return DateField;
@@ -178,6 +188,15 @@ var CustomField = (function (_Field5) {
         value: function parseValue(value) {
             return value !== null ? new this.type(value) : null;
         }
+    }, {
+        key: 'toJSON',
+        value: function toJSON(value) {
+            if (value && typeof value.toJSON === 'function') {
+                return value.toJSON();
+            }
+
+            return value;
+        }
     }]);
 
     return CustomField;
@@ -194,12 +213,12 @@ Field.register.set(Date, DateField);
  *
  * Model layout:
  *
- * 		model = {
- * 			$$: {}					// model methods (instance of ModelMethods class)
- * 			$$dirty: Boolean		// true if the model has changes to save
+ *      model = {
+ *          $$: {}                  // model methods (instance of ModelMethods class)
+ *          $$dirty: Boolean        // true if the model has changes to save
  *
- * 			// ... properties and custom methods
- * 		}
+ *          // ... properties and custom methods
+ *      }
  */
 
 var Model = (function () {
@@ -210,7 +229,7 @@ var Model = (function () {
     _createClass(Model, [{
         key: 'toString',
         value: function toString() {
-            return this.$$.name;
+            return this.$$model.__name__;
         }
     }, {
         key: 'toJSON',
@@ -224,34 +243,40 @@ var Model = (function () {
 
 Model.toJSON = function (model) {
     var sources = [model.$$.data, model.$$.changed || {}];
+    var data = {};
     var result = {};
 
     sources.forEach(function (source) {
         Object.keys(source).forEach(function (key) {
-            var value = source[key];
-
-            if (Model.isModel(value)) {
-                value = value.toJSON();
-            }
-
-            if (value instanceof Date) {
-                value = value.toJSON();
-            }
-
-            result[key] = value;
+            data[key] = source[key];
         });
     });
+
+    function extractFields(field) {
+        var name = field.name;
+        var value = undefined;
+
+        if (name in data) {
+            value = field.toJSON(data[name]);
+        }
+
+        if (value !== undefined) {
+            result[name] = value;
+        }
+    }
+
+    Model.iterateFields(model, extractFields);
 
     return result;
 };
 
 Model.isModel = function (value) {
-    return value instanceof Model || typeof value === 'function' && value.__model__;
+    return value instanceof Model;
 };
 
 /**
  * Creates a new Model constructor using the given config
- * @param {Object} config 		Model configuration
+ * @param {Object} config       Model configuration
  */
 Model.create = function createModel(config) {
     var name = config.name || 'Model';
@@ -260,7 +285,7 @@ Model.create = function createModel(config) {
     var Constructor = function ModelClass(data) {
         Model.initialize(this, Constructor);
         Model.applyDefaultValues(this, Constructor);
-        Model.applyValues(this, Constructor, data);
+        Model.applyValues(this, data);
     };
 
     var fieldNames = Object.keys(fields);
@@ -276,8 +301,7 @@ Model.create = function createModel(config) {
 
     var staticProperties = {
         __fields__: fields,
-        __name__: name,
-        __model__: true
+        __name__: name
     };
 
     Object.keys(staticProperties).forEach(function (key) {
@@ -310,8 +334,8 @@ Model.create = function createModel(config) {
  * Defines a model property based on settings of a Field instance
  * Adds getter/setter to read/write on internal model object
  *
- * @param {Object} model 		Model instance
- * @param {Field} field 		Field instance
+ * @param {Object} model        Model instance
+ * @param {Field} field         Field instance
  */
 Model.defineProperty = function defineProperty(model, field) {
     var name = field.name;
@@ -340,8 +364,8 @@ Model.defineProperty = function defineProperty(model, field) {
 /**
  * Initialize a model instance
  *
- * @param {Object} model 			Model instance
- * @param {Function} Constructor 	Constructor of instance (a Function created with Model.create)
+ * @param {Object} model            Model instance
+ * @param {Function} Constructor    Constructor of instance (a Function created with Model.create)
  */
 Model.initialize = function (model, Constructor) {
     var fields = Constructor.__fields__;
@@ -366,15 +390,21 @@ Model.initialize = function (model, Constructor) {
             return model.$$.changed !== false;
         }
     });
+
+    Object.defineProperty(model, '$$model', {
+        enumerable: false,
+        writable: false,
+        value: Constructor
+    });
 };
 
 Model.noop = function noop() {};
 
 /**
  * Create and return a model field instance
- * @param {String} name 			Field name
- * @param {Object} config 			Field config
- * @param {Function} Constructor 	The model constructor which will use this field
+ * @param {String} name             Field name
+ * @param {Object} config           Field config
+ * @param {Function} Constructor    The model constructor which will use this field
  */
 Model.createField = function createField(name, config, Constructor) {
     if (!config) {
@@ -411,9 +441,9 @@ Model.createField = function createField(name, config, Constructor) {
 
 /**
  * Apply a change to an object or a set of changes
- * @param {Object} object 		The target object
- * @param {String|Object}		Property name, or an object with changes
- * @param {*} value 			The value to apply (if name is a property)
+ * @param {Object} object       The target object
+ * @param {String|Object}       Property name, or an object with changes
+ * @param {*} value             The value to apply (if name is a property)
  */
 Model.applyChanges = function (object, name, value) {
     if (typeof name === 'object' && name) {
@@ -427,33 +457,41 @@ Model.applyChanges = function (object, name, value) {
 
 /**
  * Apply default values (defined on model fields) to model instance
- * @param {Object} model 			Model instance
- * @param {Function} Constructor 	Constructor of model instance
+ * @param {Object} model            Model instance
+ * @param {Function} Constructor    Constructor of model instance
  */
-Model.applyDefaultValues = function (model, Constructor) {
-    Constructor.__fields__.forEach(function (field) {
+Model.applyDefaultValues = function (model) {
+    function setDefault(field) {
         if ('default' in field) {
             this.$$.setPersistent(field.name, field['default']);
         }
-    }, model);
+    }
+
+    Model.iterateFields(model, setDefault);
 };
 
 /**
  * Apply a set of values to a model instance
- * @param {Object} model 			Model instance
- * @param {Function} Constructor 	Constructor of model instance
+ * @param {Object} model            Model instance
+ * @param {Function} Constructor    Constructor of model instance
  */
-Model.applyValues = function (model, Constructor, values) {
+Model.applyValues = function (model, values) {
     if (!values || typeof values !== 'object') return;
 
-    Constructor.__fields__.forEach(function (field) {
+    function setValue(field) {
         var name = field.name;
 
         if (name in values) {
             var value = field.parse(values[name]);
-            model.$$.setPersistent(name, value);
+            this.$$.setPersistent(name, value);
         }
-    });
+    }
+
+    Model.iterateFields(model, setValue);
+};
+
+Model.iterateFields = function (model, iterator) {
+    model.$$model.__fields__.forEach(iterator, model);
 };
 
 var ModelMethods = (function () {
@@ -462,8 +500,8 @@ var ModelMethods = (function () {
     }
 
     /**
-     * Creates an instance of ModelMethods bound to Constructor
-     * to use as a base object for a model instance
+     * Creates an instance of ModelMethods to use as a base object
+     * for a model instance
      */
 
     _createClass(ModelMethods, [{
@@ -503,13 +541,11 @@ var ModelMethods = (function () {
     return ModelMethods;
 })();
 
-ModelMethods.create = function (Constructor) {
+ModelMethods.create = function () {
     var methods = new ModelMethods();
 
     methods.data = {};
     methods.changed = false;
-    methods.fields = Constructor.__fields__;
-    methods.name = Constructor.__name__;
 
     return methods;
 };
