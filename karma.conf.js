@@ -8,13 +8,13 @@ module.exports = function(config) {
 		frameworks: ['jasmine'],
 		files: [
 			'vendor/es6-collections/es6-collections.js',
-			'src/**/*.js',
-			'test/**/*.spec.js'
+			'src/*.js',
+			'test/*.spec.js'
 		],
 		preprocessors: {
-			'src/**/*.js': ['babel'],
+			'src/*.js': ['babel'],
 			// uncomment to enable ES6 on tests too
-			'test/**/*.js': ['babel']
+			'test/*.js': ['babel']
 		},
 		babelPreprocessor: {
 			options: babelOptions

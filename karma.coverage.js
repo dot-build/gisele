@@ -6,7 +6,7 @@ module.exports = function(config) {
 	setBaseConfig(config);
 
 	var preprocessors = config.preprocessors;
-	preprocessors['src/**/*.js'].push(['coverage']),
+	preprocessors['src/*.js'].push(['coverage']),
 
 	config.set({
 		autoWatch: true,

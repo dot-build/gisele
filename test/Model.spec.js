@@ -415,6 +415,9 @@ describe('Model', function() {
 
             expect(jack.father instanceof Person).toBe(true);
 
+            jack.foo = 'bar';
+            jack.$$.data.foo = 'baz';
+
             var json = jack.toJSON();
 
             // toJSON() must save the relationships
