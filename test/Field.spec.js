@@ -50,12 +50,19 @@ describe('Field', function() {
     });
 
     describe('#parse(value)', function() {
+        it('should only return the value (default implementation)', function() {
+            var field = new Field({});
+            expect(field.parse('foo')).toBe('foo');
+        });
+    });
+
+    describe('#parseValue(value)', function() {
         it('should parse and return a single value', function() {
             var field = new Field({});
-            spyOn(field, 'parseValue');
+            spyOn(field, 'parse');
 
-            field.parse('foo');
-            expect(field.parseValue).toHaveBeenCalledWith('foo');
+            field.parseValue('foo');
+            expect(field.parse).toHaveBeenCalledWith('foo');
         });
 
         it('should parse and return a list of values if the field is marked as array', function() {
@@ -64,16 +71,9 @@ describe('Field', function() {
             });
 
             spyOn(field, 'parseArray');
-            field.parse(['foo']);
+            field.parseValue(['foo']);
 
             expect(field.parseArray).toHaveBeenCalledWith(['foo']);
-        });
-    });
-
-    describe('#parseValue(value)', function() {
-        it('should only return the value (default implementation)', function() {
-            var field = new Field({});
-            expect(field.parse('foo')).toBe('foo');
         });
     });
 
@@ -83,7 +83,7 @@ describe('Field', function() {
                 isArray: true
             });
 
-            field.parseValue = String;
+            field.parse = String;
             expect(field.parseArray([1, 2])).toEqual(['1', '2']);
         });
 
@@ -92,7 +92,7 @@ describe('Field', function() {
                 isArray: true
             });
 
-            field.parseValue = String;
+            field.parse = String;
             expect(field.parseArray(1)).toBe(null);
             expect(field.parseArray('1')).toBe(null);
             expect(field.parseArray({})).toBe(null);
@@ -100,16 +100,16 @@ describe('Field', function() {
         });
     });
 
-    describe('#toJSON(value)', function() {
+    describe('#serialize(value)', function() {
         it('should only return the value (default implementation)', function() {
             var field = new Field({});
-            expect(field.toJSON('foo')).toBe('foo');
+            expect(field.serialize('foo')).toBe('foo');
         });
     });
 });
 
 describe('StringField', function() {
-    describe('#parseValue(value)', function() {
+    describe('#parse(value)', function() {
         it('should cast the value to string', function() {
             var field = new StringField({});
             expect(field.parse(123)).toBe('123');
@@ -119,25 +119,25 @@ describe('StringField', function() {
         });
     });
 
-    describe('#toJSON(value)', function() {
+    describe('#serialize(value)', function() {
         it('should return a string if the value is primitive', function () {
             var field = new StringField({});
-            expect(field.toJSON(123)).toBe('123');
-            expect(field.toJSON(false)).toBe('false');
-            expect(field.toJSON('foo bar')).toBe('foo bar');
-            expect(field.toJSON(0)).toBe('0');
+            expect(field.serialize(123)).toBe('123');
+            expect(field.serialize(false)).toBe('false');
+            expect(field.serialize('foo bar')).toBe('foo bar');
+            expect(field.serialize(0)).toBe('0');
         });
 
         it('should return undefined for objects', function () {
             var field = new StringField({});
-            expect(field.toJSON({})).toBe(undefined);
-            expect(field.toJSON([])).toBe(undefined);
+            expect(field.serialize({})).toBe(undefined);
+            expect(field.serialize([])).toBe(undefined);
         });
     });
 });
 
 describe('BooleanField', function() {
-    describe('#parseValue(value)', function() {
+    describe('#parse(value)', function() {
         it('should cast the value to boolean', function() {
             var field = new BooleanField({});
             expect(field.parse(123)).toBe(true);
@@ -149,7 +149,7 @@ describe('BooleanField', function() {
 });
 
 describe('NumberField', function() {
-    describe('#parseValue(value)', function() {
+    describe('#parse(value)', function() {
         it('should cast the value to boolean', function() {
             var field = new NumberField({});
             expect(field.parse(123)).toBe(123);
@@ -161,7 +161,7 @@ describe('NumberField', function() {
 });
 
 describe('DateField', function() {
-    describe('#parseValue(value)', function() {
+    describe('#parse(value)', function() {
         it('should cast the value to boolean', function() {
             var field = new DateField({});
             var validDate = new Date(Date.parse('2011-01-10T00:00:00.000Z'));
@@ -173,10 +173,20 @@ describe('DateField', function() {
             expect(field.parse({})).toBe(null);
         });
     });
+
+    describe('#serialize(Date date)', function() {
+        it('should convert a date to ISO8601', function () {
+            var field = new DateField({});
+            var date = '2011-01-10T00:00:00.000Z';
+            var dateObject = new Date('2011-01-10T00:00:00.000Z');
+
+            expect(field.serialize(dateObject)).toBe(date);
+        });
+    });
 });
 
 describe('CustomField', function() {
-    describe('#parseValue(value)', function() {
+    describe('#parse(value)', function() {
         it('should return null if the value is null and the field type is a Model', function() {
             var MyModel = Model.create({});
             var field = new CustomField({
@@ -184,6 +194,30 @@ describe('CustomField', function() {
             });
 
             expect(field.parse(null)).toBe(null);
+        });
+    });
+
+    describe('#serialize(value)', function() {
+        it('should call #toJSON() on value if its supported', function () {
+            var value = {
+                toJSON: function () {
+                    return 5;
+                }
+            };
+
+            var field = new CustomField({});
+            var result = field.serialize(value);
+
+            expect(result).toBe(5);
+        });
+
+        it('should return the value unchanged', function () {
+            var value = {};
+
+            var field = new CustomField({});
+            var result = field.serialize(value);
+
+            expect(result).toBe(value);
         });
     });
 });

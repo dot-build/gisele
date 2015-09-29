@@ -11,16 +11,12 @@ class Field {
         return (this.required && value === undefined) ? false : true;
     }
 
-    parse(value) {
+    parseValue(value) {
         if (this.isArray) {
             return this.parseArray(value);
         }
 
-        return this.parseValue(value);
-    }
-
-    parseValue(value) {
-        return value;
+        return this.parse(value);
     }
 
     parseArray(value) {
@@ -28,10 +24,14 @@ class Field {
             return null;
         }
 
-        return value.map(this.parseValue, this);
+        return value.map(this.parse, this);
     }
 
-    toJSON(value) {
+    parse(value) {
+        return value;
+    }
+
+    serialize(value) {
         return value;
     }
 }
@@ -46,29 +46,29 @@ Field.create = function(config) {
 };
 
 class StringField extends Field {
-    parseValue(value) {
+    parse(value) {
         return String(value !== undefined ? value : '').trim();
     }
 
-    toJSON(value) {
+    serialize(value) {
         return typeof value !== 'object' ? String(value) : undefined;
     }
 }
 
 class BooleanField extends Field {
-    parseValue(value) {
+    parse(value) {
         return !!value;
     }
 }
 
 class NumberField extends Field {
-    parseValue(value) {
+    parse(value) {
         return value && Number(value) || 0;
     }
 }
 
 class DateField extends Field {
-    parseValue(value) {
+    parse(value) {
         if (isFinite(value)) {
             return new Date(value);
         }
@@ -83,17 +83,17 @@ class DateField extends Field {
         return null;
     }
 
-    toJSON(value) {
+    serialize(value) {
         return value instanceof Date ? value.toJSON() : undefined;
     }
 }
 
 class CustomField extends Field {
-    parseValue(value) {
+    parse(value) {
         return value !== null ? new this.type(value) : null;
     }
 
-    toJSON(value) {
+    serialize(value) {
         if (value && typeof value.toJSON === 'function') {
             return value.toJSON();
         }

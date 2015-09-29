@@ -52,10 +52,10 @@ Model.toJSON = function(model) {
 
 Model.fieldToJSON = function(field, value) {
     if (field.isArray) {
-        return value.map(field.toJSON);
+        return value.map(field.serialize);
     }
 
-    return field.toJSON(value);
+    return field.serialize(value);
 };
 
 Model.isModel = function(value) {
@@ -141,7 +141,7 @@ Model.defineProperty = function defineProperty(model, field) {
 
     if (!field.readOnly) {
         setter = function setter(value) {
-            value = field.parse(value);
+            value = field.parseValue(value);
             model.$$.set(name, value);
         };
     }
