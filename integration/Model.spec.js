@@ -7,13 +7,12 @@ describe('Model', function() {
     }
 
     class PointField extends Field {
-        parseValue(value) {
+        parse(value) {
             return value && Array.isArray(value) && value.length === 2 ?
                 new Point(value) : null;
         }
 
-        toJSON(value) {
-            console.log(value);
+        serialize(value) {
             return value ? [value.x, value.y] : null;
         }
     }
@@ -55,6 +54,7 @@ describe('Model', function() {
         };
 
         var instance = new Points(data);
+
         expect(instance.one instanceof Point).toBe(true);
         expect(instance.two instanceof Point).toBe(true);
 

@@ -2,3 +2,5 @@ node_modules
 coverage
 vendor
 .DS_Store
+*.sublime*
+.sublime*

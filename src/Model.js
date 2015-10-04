@@ -65,6 +65,8 @@ Model.isModel = function(value) {
 /**
  * Creates a new Model constructor using the given config
  * @param {Object} config       Model configuration
+ *
+ * Executes each construction step definedl on Model.constructors
  */
 Model.create = function createModel(config) {
     if (typeof config !== 'object') {
@@ -91,13 +93,31 @@ Model.create = function createModel(config) {
     let fieldNames = Object.keys(fields);
 
     // object format: { fieldName: 'self', otherField: String ... }
-    fields = fieldNames.map(function(key) {
+    let normalizedFields = fieldNames.map(function(key) {
         return Model.createField(key, fields[key], Constructor);
     });
 
+    let constructionData = {
+        name, fields: normalizedFields, customMethods
+    };
+
+    Model.constructors.forEach(function(ctor) {
+        ctor(Constructor, constructionData);
+    });
+
+    return Constructor;
+};
+
+Model.constructors = [];
+
+Model.constructors.push(function setupPrototype(Constructor) {
     let prototype = Object.create(Model.prototype);
     prototype.constructor = Constructor;
     Constructor.prototype = prototype;
+});
+
+Model.constructors.push(function defineStaticProperties(Constructor, data) {
+    let {name, fields} = data;
 
     let staticProperties = {
         __fields__: fields,
@@ -110,9 +130,16 @@ Model.create = function createModel(config) {
             writable: false
         });
     });
+});
+
+Model.constructors.push(function addCustomMethods(Constructor, data) {
+    let customMethods = data.customMethods;
 
     if (customMethods) {
-        Object.keys(customMethods).forEach(function(name) {
+        let fieldNames = data.fields.map((field) => field.name );
+        let customMethodNames = Object.keys(customMethods);
+
+        customMethodNames.forEach(function(name) {
             if (fieldNames.indexOf(name) !== -1) {
                 throw new Error(`Cannot override field ${name} with a custom method of same name`);
             }
@@ -120,9 +147,7 @@ Model.create = function createModel(config) {
             Constructor.prototype[name] = customMethods[name];
         });
     }
-
-    return Constructor;
-};
+});
 
 /**
  * Defines a model property based on settings of a Field instance
@@ -168,14 +193,24 @@ Model.initialize = function(model, Constructor) {
         Model.defineProperty(model, field);
     });
 
-    var modelInternals = ModelMethods.create(Constructor);
+    Model.initializers.forEach((initializer) => initializer(model, Constructor));
+};
+
+Model.noop = function noop() {};
+
+Model.initializers = [];
+
+Model.initializers.push(function setInternalMethods(model, Constructor) {
+    let modelInternals = ModelMethods.create(Constructor);
 
     // Model methods
     Object.defineProperty(model, '$$', {
         enumerable: false,
         value: modelInternals
     });
+});
 
+Model.initializers.push(function addDirtyFlag(model, Constructor) {
     // Virtual property. Returns true if the model has any changes
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
@@ -184,16 +219,15 @@ Model.initialize = function(model, Constructor) {
             return (model.$$.changed !== false);
         }
     });
+});
 
+Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
     Object.defineProperty(model, '$$model', {
         enumerable: false,
         writable: false,
         value: Constructor
     });
-};
-
-Model.noop = function noop() {};
-
+});
 /**
  * Create and return a model field instance
  * @param {String} name             Field name
@@ -274,7 +308,7 @@ Model.applyValues = function(model, values) {
         let name = field.name;
 
         if (name in values) {
-            let value = field.parse(values[name]);
+            let value = field.parseValue(values[name]);
             this.$$.setPersistent(name, value);
         }
     }
