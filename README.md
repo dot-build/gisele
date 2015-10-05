@@ -8,7 +8,7 @@ A base class to write data models in Javascript. Give it a set of fields and it 
 
 ## Usage
 
-```
+```js
 var Fruit = Model.create({
 	name: 'Fruit',
 	fields: {
@@ -23,11 +23,18 @@ var fruit = new Fruit({
 	calories: 120
 });
 
+```
+
+Each declared field is managed and the changes are tracked apart from the pristine data, so the model can be reset or the changes applied after we actually saved the changes somewhere.
+
+```js
+
 fruit.name = 'Lemon';
 
 console.log(fruit.$$dirty)
 // true
 
+// apply the changes
 fruit.$$.commit();
 
 console.log(fruit.$$dirty)
@@ -35,10 +42,10 @@ console.log(fruit.$$dirty)
 
 fruit.name = 'Apple';
 
+// rollback current changes
 fruit.$$.rollback();
 
 console.log(fruit.name)
 // 'Lemon'
-
 
 ```
