@@ -32,18 +32,13 @@ var Field = (function () {
             return this.required && value === undefined ? false : true;
         }
     }, {
-        key: 'parse',
-        value: function parse(value) {
+        key: 'parseValue',
+        value: function parseValue(value) {
             if (this.isArray) {
                 return this.parseArray(value);
             }
 
-            return this.parseValue(value);
-        }
-    }, {
-        key: 'parseValue',
-        value: function parseValue(value) {
-            return value;
+            return this.parse(value);
         }
     }, {
         key: 'parseArray',
@@ -52,11 +47,16 @@ var Field = (function () {
                 return null;
             }
 
-            return value.map(this.parseValue, this);
+            return value.map(this.parse, this);
         }
     }, {
-        key: 'toJSON',
-        value: function toJSON(value) {
+        key: 'parse',
+        value: function parse(value) {
+            return value;
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize(value) {
             return value;
         }
     }]);
@@ -83,13 +83,13 @@ var StringField = (function (_Field) {
     }
 
     _createClass(StringField, [{
-        key: 'parseValue',
-        value: function parseValue(value) {
+        key: 'parse',
+        value: function parse(value) {
             return String(value !== undefined ? value : '').trim();
         }
     }, {
-        key: 'toJSON',
-        value: function toJSON(value) {
+        key: 'serialize',
+        value: function serialize(value) {
             return typeof value !== 'object' ? String(value) : undefined;
         }
     }]);
@@ -107,8 +107,8 @@ var BooleanField = (function (_Field2) {
     }
 
     _createClass(BooleanField, [{
-        key: 'parseValue',
-        value: function parseValue(value) {
+        key: 'parse',
+        value: function parse(value) {
             return !!value;
         }
     }]);
@@ -126,8 +126,8 @@ var NumberField = (function (_Field3) {
     }
 
     _createClass(NumberField, [{
-        key: 'parseValue',
-        value: function parseValue(value) {
+        key: 'parse',
+        value: function parse(value) {
             return value && Number(value) || 0;
         }
     }]);
@@ -145,8 +145,8 @@ var DateField = (function (_Field4) {
     }
 
     _createClass(DateField, [{
-        key: 'parseValue',
-        value: function parseValue(value) {
+        key: 'parse',
+        value: function parse(value) {
             if (isFinite(value)) {
                 return new Date(value);
             }
@@ -161,8 +161,8 @@ var DateField = (function (_Field4) {
             return null;
         }
     }, {
-        key: 'toJSON',
-        value: function toJSON(value) {
+        key: 'serialize',
+        value: function serialize(value) {
             return value instanceof Date ? value.toJSON() : undefined;
         }
     }]);
@@ -184,13 +184,13 @@ var CustomField = (function (_Field5) {
      */
 
     _createClass(CustomField, [{
-        key: 'parseValue',
-        value: function parseValue(value) {
+        key: 'parse',
+        value: function parse(value) {
             return value !== null ? new this.type(value) : null;
         }
     }, {
-        key: 'toJSON',
-        value: function toJSON(value) {
+        key: 'serialize',
+        value: function serialize(value) {
             if (value && typeof value.toJSON === 'function') {
                 return value.toJSON();
             }
@@ -272,10 +272,10 @@ Model.toJSON = function (model) {
 
 Model.fieldToJSON = function (field, value) {
     if (field.isArray) {
-        return value.map(field.toJSON);
+        return value.map(field.serialize);
     }
 
-    return field.toJSON(value);
+    return field.serialize(value);
 };
 
 Model.isModel = function (value) {
@@ -285,6 +285,8 @@ Model.isModel = function (value) {
 /**
  * Creates a new Model constructor using the given config
  * @param {Object} config       Model configuration
+ *
+ * Executes each construction step definedl on Model.constructors
  */
 Model.create = function createModel(config) {
     if (typeof config !== 'object') {
@@ -311,13 +313,39 @@ Model.create = function createModel(config) {
     var fieldNames = Object.keys(fields);
 
     // object format: { fieldName: 'self', otherField: String ... }
-    fields = fieldNames.map(function (key) {
+    var normalizedFields = fieldNames.map(function (key) {
         return Model.createField(key, fields[key], Constructor);
     });
 
+    var constructionData = {
+        name: name, fields: normalizedFields, customMethods: customMethods
+    };
+
+    Model.constructors.forEach(function (ctor) {
+        ctor(Constructor, constructionData);
+    });
+
+    return Constructor;
+};
+
+/**
+ * Model constructors
+ *
+ * An array of functions called to setup used to make a model's constructor.
+ * Each function receives the Constructor and an object with data about the model,
+ * namely the fields, the model name and the custom methods it may have.
+ */
+Model.constructors = [];
+
+Model.constructors.push(function setupPrototype(Constructor) {
     var prototype = Object.create(Model.prototype);
     prototype.constructor = Constructor;
     Constructor.prototype = prototype;
+});
+
+Model.constructors.push(function defineStaticProperties(Constructor, data) {
+    var name = data.name;
+    var fields = data.fields;
 
     var staticProperties = {
         __fields__: fields,
@@ -330,19 +358,26 @@ Model.create = function createModel(config) {
             writable: false
         });
     });
+});
 
-    if (customMethods) {
-        Object.keys(customMethods).forEach(function (name) {
-            if (fieldNames.indexOf(name) !== -1) {
-                throw new Error('Cannot override field ' + name + ' with a custom method of same name');
-            }
+Model.constructors.push(function addCustomMethods(Constructor, data) {
+    var customMethods = data.customMethods;
 
-            Constructor.prototype[name] = customMethods[name];
-        });
-    }
+    if (!customMethods) return;
 
-    return Constructor;
-};
+    var fieldNames = data.fields.map(function (field) {
+        return field.name;
+    });
+    var customMethodNames = Object.keys(customMethods);
+
+    customMethodNames.forEach(function (name) {
+        if (fieldNames.indexOf(name) !== -1) {
+            throw new Error('Cannot override field ' + name + ' with a custom method of same name');
+        }
+
+        Constructor.prototype[name] = customMethods[name];
+    });
+});
 
 /**
  * Defines a model property based on settings of a Field instance
@@ -361,7 +396,7 @@ Model.defineProperty = function defineProperty(model, field) {
 
     if (!field.readOnly) {
         setter = function setter(value) {
-            value = field.parse(value);
+            value = field.parseValue(value);
             model.$$.set(name, value);
         };
     }
@@ -388,6 +423,22 @@ Model.initialize = function (model, Constructor) {
         Model.defineProperty(model, field);
     });
 
+    Model.initializers.forEach(function (initializer) {
+        return initializer(model, Constructor);
+    });
+};
+
+Model.noop = function noop() {};
+
+/**
+ * Model initializers
+ *
+ * An array of functions called when a Model is instantiated. Each function
+ * receives the model instance and the models' Constructor function
+ */
+Model.initializers = [];
+
+Model.initializers.push(function setInternalMethods(model, Constructor) {
     var modelInternals = ModelMethods.create(Constructor);
 
     // Model methods
@@ -395,8 +446,10 @@ Model.initialize = function (model, Constructor) {
         enumerable: false,
         value: modelInternals
     });
+});
 
-    // Virtual property. Returns true if the model has any changes
+Model.initializers.push(function addDirtyFlag(model) {
+    // A virtual property that returns true if the model has any changes
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
         set: Model.noop,
@@ -404,15 +457,15 @@ Model.initialize = function (model, Constructor) {
             return model.$$.changed !== false;
         }
     });
+});
 
+Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
     Object.defineProperty(model, '$$model', {
         enumerable: false,
         writable: false,
         value: Constructor
     });
-};
-
-Model.noop = function noop() {};
+});
 
 /**
  * Create and return a model field instance
@@ -496,7 +549,7 @@ Model.applyValues = function (model, values) {
         var name = field.name;
 
         if (name in values) {
-            var value = field.parse(values[name]);
+            var value = field.parseValue(values[name]);
             this.$$.setPersistent(name, value);
         }
     }

@@ -108,6 +108,13 @@ Model.create = function createModel(config) {
     return Constructor;
 };
 
+/**
+ * Model constructors
+ *
+ * An array of functions called to setup used to make a model's constructor.
+ * Each function receives the Constructor and an object with data about the model,
+ * namely the fields, the model name and the custom methods it may have.
+ */
 Model.constructors = [];
 
 Model.constructors.push(function setupPrototype(Constructor) {
@@ -135,18 +142,18 @@ Model.constructors.push(function defineStaticProperties(Constructor, data) {
 Model.constructors.push(function addCustomMethods(Constructor, data) {
     let customMethods = data.customMethods;
 
-    if (customMethods) {
-        let fieldNames = data.fields.map((field) => field.name );
-        let customMethodNames = Object.keys(customMethods);
+    if (!customMethods) return;
 
-        customMethodNames.forEach(function(name) {
-            if (fieldNames.indexOf(name) !== -1) {
-                throw new Error(`Cannot override field ${name} with a custom method of same name`);
-            }
+    let fieldNames = data.fields.map((field) => field.name );
+    let customMethodNames = Object.keys(customMethods);
 
-            Constructor.prototype[name] = customMethods[name];
-        });
-    }
+    customMethodNames.forEach(function(name) {
+        if (fieldNames.indexOf(name) !== -1) {
+            throw new Error(`Cannot override field ${name} with a custom method of same name`);
+        }
+
+        Constructor.prototype[name] = customMethods[name];
+    });
 });
 
 /**
@@ -198,6 +205,12 @@ Model.initialize = function(model, Constructor) {
 
 Model.noop = function noop() {};
 
+/**
+ * Model initializers
+ *
+ * An array of functions called when a Model is instantiated. Each function
+ * receives the model instance and the models' Constructor function
+ */
 Model.initializers = [];
 
 Model.initializers.push(function setInternalMethods(model, Constructor) {
@@ -210,8 +223,8 @@ Model.initializers.push(function setInternalMethods(model, Constructor) {
     });
 });
 
-Model.initializers.push(function addDirtyFlag(model, Constructor) {
-    // Virtual property. Returns true if the model has any changes
+Model.initializers.push(function addDirtyFlag(model) {
+    // A virtual property that returns true if the model has any changes
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
         set: Model.noop,
@@ -228,6 +241,7 @@ Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
         value: Constructor
     });
 });
+
 /**
  * Create and return a model field instance
  * @param {String} name             Field name
