@@ -6,6 +6,8 @@ Because Bündchen is too fancy to name a model library
 
 A base class to write data models in Javascript. Give it a set of fields and it will handle the model state
 
+Read more [in this blog post](http://darlanalv.es/en/other/177b217cf0-Gisele-a-model-library/index.html?utm_source=github&utm_medium=readme&utm_campaign=gh)
+
 ## Usage
 
 ```js
