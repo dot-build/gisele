@@ -27,11 +27,6 @@ var Field = (function () {
     }
 
     _createClass(Field, [{
-        key: 'validate',
-        value: function validate(value) {
-            return this.required && value === undefined ? false : true;
-        }
-    }, {
         key: 'parseValue',
         value: function parseValue(value) {
             if (this.isArray) {
@@ -226,6 +221,13 @@ var Model = (function () {
         _classCallCheck(this, Model);
     }
 
+    /**
+     * Model initializers
+     *
+     * An array of functions called when a Model is instantiated. Each function
+     * receives the model instance and the models' Constructor function
+     */
+
     _createClass(Model, [{
         key: 'toString',
         value: function toString() {
@@ -236,97 +238,292 @@ var Model = (function () {
         value: function toJSON() {
             return Model.toJSON(this);
         }
+    }], [{
+        key: 'toJSON',
+        value: function toJSON(model) {
+            var sources = [model.$$.data, model.$$.changed || {}];
+            var data = {};
+            var result = {};
+
+            sources.forEach(function (source) {
+                Object.keys(source).forEach(function (key) {
+                    data[key] = source[key];
+                });
+            });
+
+            function extractFields(field) {
+                var name = field.name;
+                var value = undefined;
+
+                if (name in data) {
+                    value = Model.fieldToJSON(field, data[name]);
+                }
+
+                if (value !== undefined) {
+                    result[name] = value;
+                }
+            }
+
+            Model.iterateFields(model, extractFields);
+
+            return result;
+        }
+    }, {
+        key: 'fieldToJSON',
+        value: function fieldToJSON(field, value) {
+            if (field.isArray) {
+                return value.map(field.serialize);
+            }
+
+            return field.serialize(value);
+        }
+    }, {
+        key: 'isModel',
+        value: function isModel(value) {
+            return value instanceof Model;
+        }
+
+        /**
+         * Creates a new Model constructor using the given config
+         * @param {Object} config       Model configuration
+         *
+         * Executes each construction step definedl on Model.constructors
+         */
+    }, {
+        key: 'create',
+        value: function create(config) {
+            if (typeof config !== 'object') {
+                throw new Error('Invalid model configuration');
+            }
+
+            var name, fields, customMethods;
+
+            if (config.fields) {
+                name = config.name || 'Model';
+                fields = config.fields || {};
+                customMethods = config.methods;
+            } else {
+                name = 'Model';
+                fields = config;
+            }
+
+            var Constructor = function Gisele(data) {
+                Model.initialize(this, Constructor);
+                Model.applyDefaultValues(this, Constructor);
+                Model.applyValues(this, data);
+            };
+
+            var fieldNames = Object.keys(fields);
+
+            // object format: { fieldName: 'self', otherField: String ... }
+            var normalizedFields = fieldNames.map(function (key) {
+                return Model.createField(key, fields[key], Constructor);
+            });
+
+            var constructionData = {
+                name: name, fields: normalizedFields, customMethods: customMethods
+            };
+
+            Model.constructors.forEach(function (ctor) {
+                ctor(Constructor, constructionData);
+            });
+
+            return Constructor;
+        }
+
+        /**
+         * Defines a model property based on settings of a Field instance
+         * Adds getter/setter to read/write on internal model object
+         *
+         * @param {Object} model        Model instance
+         * @param {Field} field         Field instance
+         */
+    }, {
+        key: 'defineProperty',
+        value: function defineProperty(model, field) {
+            var name = field.name;
+            var getter = function getter() {
+                return model.$$.get(name);
+            };
+
+            var setter = Model.noop;
+
+            if (!field.readOnly) {
+                setter = function setter(value) {
+                    value = field.parseValue(value);
+                    model.$$.set(name, value);
+                };
+            }
+
+            var descriptor = {
+                enumerable: true,
+                get: getter,
+                set: setter
+            };
+
+            Object.defineProperty(model, name, descriptor);
+        }
+
+        /**
+         * Initialize a model instance
+         *
+         * @param {Object} model            Model instance
+         * @param {Function} Constructor    Constructor of instance (a Function created with Model.create)
+         */
+    }, {
+        key: 'initialize',
+        value: function initialize(model, Constructor) {
+            var fields = Constructor.__fields__;
+
+            fields.forEach(function (field) {
+                Model.defineProperty(model, field);
+            });
+
+            Model.initializers.forEach(function (initializer) {
+                return initializer(model, Constructor);
+            });
+        }
+    }, {
+        key: 'noop',
+        value: function noop() {}
+
+        /**
+         * Create and return a model field instance
+         * @param {String} name             Field name
+         * @param {Object} config           Field config
+         * @param {Function} Constructor    The model constructor which will use this field
+         */
+    }, {
+        key: 'createField',
+        value: function createField(name, config, Constructor) {
+            if (!config) {
+                throw new Error('Invalid field config', config);
+            }
+
+            // replace the 'self' reference with the actual model Constructor
+            if (config === 'self') {
+                config = Constructor;
+            } else if (config.type === 'self') {
+                config.type = Constructor;
+            }
+
+            var type = typeof config;
+            var field = config;
+
+            // field is a constructor
+            if (type === 'function') {
+                field = {
+                    type: field
+                };
+            }
+
+            if (!field.name) {
+                field.name = name;
+            }
+
+            if (typeof field.type !== 'function') {
+                throw new Error('Invalid field type', field.type);
+            }
+
+            return Field.create(field);
+        }
+
+        /**
+         * Apply a change to an object or a set of changes
+         * @param {Object} object       The target object
+         * @param {String|Object}       Property name, or an object with changes
+         * @param {*} value             The value to apply (if name is a property)
+         */
+    }, {
+        key: 'applyChanges',
+        value: function applyChanges(object, name, value) {
+            if (typeof name === 'object' && name) {
+                Object.keys(name).forEach(function (key) {
+                    return object[key] = name[key];
+                });
+            } else {
+                object[name] = value;
+            }
+        }
+
+        /**
+         * Apply default values (defined on model fields) to model instance
+         * @param {Object} model            Model instance
+         * @param {Function} Constructor    Constructor of model instance
+         */
+    }, {
+        key: 'applyDefaultValues',
+        value: function applyDefaultValues(model) {
+            function setDefault(field) {
+                if ('default' in field) {
+                    model.$$.setPersistent(field.name, field['default']);
+                }
+            }
+
+            Model.iterateFields(model, setDefault);
+        }
+
+        /**
+         * Apply a set of values to a model instance
+         * @param {Object} model            Model instance
+         * @param {Function} Constructor    Constructor of model instance
+         */
+    }, {
+        key: 'applyValues',
+        value: function applyValues(model, values) {
+            if (!values || typeof values !== 'object') return;
+
+            function setValue(field) {
+                var name = field.name;
+
+                if (name in values) {
+                    var value = field.parseValue(values[name]);
+                    model.$$.setPersistent(name, value);
+                }
+            }
+
+            Model.iterateFields(model, setValue);
+        }
+    }, {
+        key: 'iterateFields',
+        value: function iterateFields(model, iterator) {
+            model.$$model.__fields__.forEach(iterator, model);
+        }
     }]);
 
     return Model;
 })();
 
-Model.toJSON = function (model) {
-    var sources = [model.$$.data, model.$$.changed || {}];
-    var data = {};
-    var result = {};
+Model.initializers = [];
 
-    sources.forEach(function (source) {
-        Object.keys(source).forEach(function (key) {
-            data[key] = source[key];
-        });
+Model.initializers.push(function setInternalMethods(model, Constructor) {
+    var modelInternals = ModelMethods.create(Constructor);
+
+    // Model methods
+    Object.defineProperty(model, '$$', {
+        enumerable: false,
+        value: modelInternals
     });
+});
 
-    function extractFields(field) {
-        var name = field.name;
-        var value = undefined;
-
-        if (name in data) {
-            value = Model.fieldToJSON(field, data[name]);
+Model.initializers.push(function addDirtyFlag(model) {
+    // A virtual property that returns true if the model has any changes
+    Object.defineProperty(model, '$$dirty', {
+        enumerable: false,
+        set: Model.noop,
+        get: function get() {
+            return model.$$.changed !== false;
         }
-
-        if (value !== undefined) {
-            result[name] = value;
-        }
-    }
-
-    Model.iterateFields(model, extractFields);
-
-    return result;
-};
-
-Model.fieldToJSON = function (field, value) {
-    if (field.isArray) {
-        return value.map(field.serialize);
-    }
-
-    return field.serialize(value);
-};
-
-Model.isModel = function (value) {
-    return value instanceof Model;
-};
-
-/**
- * Creates a new Model constructor using the given config
- * @param {Object} config       Model configuration
- *
- * Executes each construction step definedl on Model.constructors
- */
-Model.create = function createModel(config) {
-    if (typeof config !== 'object') {
-        throw new Error('Invalid model configuration');
-    }
-
-    var name, fields, customMethods;
-
-    if (config.fields) {
-        name = config.name || 'Model';
-        fields = config.fields || {};
-        customMethods = config.methods;
-    } else {
-        name = 'Model';
-        fields = config;
-    }
-
-    var Constructor = function Gisele(data) {
-        Model.initialize(this, Constructor);
-        Model.applyDefaultValues(this, Constructor);
-        Model.applyValues(this, data);
-    };
-
-    var fieldNames = Object.keys(fields);
-
-    // object format: { fieldName: 'self', otherField: String ... }
-    var normalizedFields = fieldNames.map(function (key) {
-        return Model.createField(key, fields[key], Constructor);
     });
+});
 
-    var constructionData = {
-        name: name, fields: normalizedFields, customMethods: customMethods
-    };
-
-    Model.constructors.forEach(function (ctor) {
-        ctor(Constructor, constructionData);
+Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
+    Object.defineProperty(model, '$$model', {
+        enumerable: false,
+        writable: false,
+        value: Constructor
     });
-
-    return Constructor;
-};
+});
 
 /**
  * Model constructors
@@ -378,188 +575,6 @@ Model.constructors.push(function addCustomMethods(Constructor, data) {
         Constructor.prototype[name] = customMethods[name];
     });
 });
-
-/**
- * Defines a model property based on settings of a Field instance
- * Adds getter/setter to read/write on internal model object
- *
- * @param {Object} model        Model instance
- * @param {Field} field         Field instance
- */
-Model.defineProperty = function defineProperty(model, field) {
-    var name = field.name;
-    var getter = function getter() {
-        return model.$$.get(name);
-    };
-
-    var setter = Model.noop;
-
-    if (!field.readOnly) {
-        setter = function setter(value) {
-            value = field.parseValue(value);
-            model.$$.set(name, value);
-        };
-    }
-
-    var descriptor = {
-        enumerable: true,
-        get: getter,
-        set: setter
-    };
-
-    Object.defineProperty(model, name, descriptor);
-};
-
-/**
- * Initialize a model instance
- *
- * @param {Object} model            Model instance
- * @param {Function} Constructor    Constructor of instance (a Function created with Model.create)
- */
-Model.initialize = function (model, Constructor) {
-    var fields = Constructor.__fields__;
-
-    fields.forEach(function (field) {
-        Model.defineProperty(model, field);
-    });
-
-    Model.initializers.forEach(function (initializer) {
-        return initializer(model, Constructor);
-    });
-};
-
-Model.noop = function noop() {};
-
-/**
- * Model initializers
- *
- * An array of functions called when a Model is instantiated. Each function
- * receives the model instance and the models' Constructor function
- */
-Model.initializers = [];
-
-Model.initializers.push(function setInternalMethods(model, Constructor) {
-    var modelInternals = ModelMethods.create(Constructor);
-
-    // Model methods
-    Object.defineProperty(model, '$$', {
-        enumerable: false,
-        value: modelInternals
-    });
-});
-
-Model.initializers.push(function addDirtyFlag(model) {
-    // A virtual property that returns true if the model has any changes
-    Object.defineProperty(model, '$$dirty', {
-        enumerable: false,
-        set: Model.noop,
-        get: function get() {
-            return model.$$.changed !== false;
-        }
-    });
-});
-
-Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
-    Object.defineProperty(model, '$$model', {
-        enumerable: false,
-        writable: false,
-        value: Constructor
-    });
-});
-
-/**
- * Create and return a model field instance
- * @param {String} name             Field name
- * @param {Object} config           Field config
- * @param {Function} Constructor    The model constructor which will use this field
- */
-Model.createField = function createField(name, config, Constructor) {
-    if (!config) {
-        throw new Error('Invalid field config', config);
-    }
-
-    // replace the 'self' reference with the actual model Constructor
-    if (config === 'self') {
-        config = Constructor;
-    } else if (config.type === 'self') {
-        config.type = Constructor;
-    }
-
-    var type = typeof config;
-    var field = config;
-
-    // field is a constructor
-    if (type === 'function') {
-        field = {
-            type: field
-        };
-    }
-
-    if (!field.name) {
-        field.name = name;
-    }
-
-    if (typeof field.type !== 'function') {
-        throw new Error('Invalid field type', field.type);
-    }
-
-    return Field.create(field);
-};
-
-/**
- * Apply a change to an object or a set of changes
- * @param {Object} object       The target object
- * @param {String|Object}       Property name, or an object with changes
- * @param {*} value             The value to apply (if name is a property)
- */
-Model.applyChanges = function (object, name, value) {
-    if (typeof name === 'object' && name) {
-        Object.keys(name).forEach(function (key) {
-            return object[key] = name[key];
-        });
-    } else {
-        object[name] = value;
-    }
-};
-
-/**
- * Apply default values (defined on model fields) to model instance
- * @param {Object} model            Model instance
- * @param {Function} Constructor    Constructor of model instance
- */
-Model.applyDefaultValues = function (model) {
-    function setDefault(field) {
-        if ('default' in field) {
-            this.$$.setPersistent(field.name, field['default']);
-        }
-    }
-
-    Model.iterateFields(model, setDefault);
-};
-
-/**
- * Apply a set of values to a model instance
- * @param {Object} model            Model instance
- * @param {Function} Constructor    Constructor of model instance
- */
-Model.applyValues = function (model, values) {
-    if (!values || typeof values !== 'object') return;
-
-    function setValue(field) {
-        var name = field.name;
-
-        if (name in values) {
-            var value = field.parseValue(values[name]);
-            this.$$.setPersistent(name, value);
-        }
-    }
-
-    Model.iterateFields(model, setValue);
-};
-
-Model.iterateFields = function (model, iterator) {
-    model.$$model.__fields__.forEach(iterator, model);
-};
 
 var ModelMethods = (function () {
     function ModelMethods() {

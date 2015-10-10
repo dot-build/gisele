@@ -26,29 +26,6 @@ describe('Field', function() {
         });
     });
 
-    describe('#validate(value)', function() {
-        it('should return true', function () {
-            var field = new Field({});
-            expect(field.validate()).toBe(true);
-        });
-
-        it('should return false if a field is marked as required and the value is not valid', function () {
-            var field = new Field({
-                required: true
-            });
-
-            expect(field.validate()).toBe(false);
-        });
-
-        it('should return true if a field is marked as required and a value is provided', function () {
-            var field = new Field({
-                required: true
-            });
-
-            expect(field.validate(1)).toBe(true);
-        });
-    });
-
     describe('#parse(value)', function() {
         it('should only return the value (default implementation)', function() {
             var field = new Field({});
