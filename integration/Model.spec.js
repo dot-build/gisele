@@ -17,7 +17,7 @@ describe('Model', function() {
         }
     }
 
-    Field.register.set(Point, PointField);
+    Field.add(Point, PointField);
 
     it('should handle primitive values', function() {
         var Primitive = Model.create({

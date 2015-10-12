@@ -4,9 +4,11 @@ module.exports = function(config) {
 	var babelOptions = require(__dirname + '/babel-options.js');
 
 	config.set({
+		port: 9870,
 		browsers: ['PhantomJS'],
 		frameworks: ['jasmine'],
 		files: [
+			'es5-shim.js',
 			'vendor/es6-collections/es6-collections.js',
 			'src/*.js',
 			'test/*.spec.js'

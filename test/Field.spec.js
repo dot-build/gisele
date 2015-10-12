@@ -1,4 +1,4 @@
-/* globals Field, CustomField, StringField, BooleanField, NumberField, DateField, Model */
+/* globals Field, GenericField, StringField, BooleanField, NumberField, DateField, Model */
 describe('Field', function() {
     describe('#constructor(config)', function() {
         it('should throw an error if the config is invalid', function() {
@@ -162,11 +162,11 @@ describe('DateField', function() {
     });
 });
 
-describe('CustomField', function() {
+describe('GenericField', function() {
     describe('#parse(value)', function() {
         it('should return null if the value is null and the field type is a Model', function() {
             var MyModel = Model.create({});
-            var field = new CustomField({
+            var field = new GenericField({
                 type: MyModel
             });
 
@@ -182,7 +182,7 @@ describe('CustomField', function() {
                 }
             };
 
-            var field = new CustomField({});
+            var field = new GenericField({});
             var result = field.serialize(value);
 
             expect(result).toBe(5);
@@ -191,7 +191,7 @@ describe('CustomField', function() {
         it('should return the value unchanged', function () {
             var value = {};
 
-            var field = new CustomField({});
+            var field = new GenericField({});
             var result = field.serialize(value);
 
             expect(result).toBe(value);

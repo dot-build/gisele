@@ -7,6 +7,7 @@ module.exports = function(config) {
 		browsers: ['PhantomJS'],
 		frameworks: ['jasmine'],
 		files: [
+			'es5-shim.js',
 			'vendor/es6-collections/es6-collections.js',
 			'src/*.js',
 			'integration/*.js'

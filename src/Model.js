@@ -13,7 +13,7 @@
  */
 class Model {
     toString() {
-        return this.$$model.__name__;
+        return this.constructor.__name__;
     }
 
     toJSON() {
@@ -25,8 +25,8 @@ class Model {
         var data = {};
         var result = {};
 
-        sources.forEach(function(source) {
-            Object.keys(source).forEach(function(key) {
+        sources.forEach(function mergeSource(source) {
+            Object.keys(source).forEach(function copyProperty(key) {
                 data[key] = source[key];
             });
         });
@@ -91,7 +91,8 @@ class Model {
 
         let fieldNames = Object.keys(fields);
 
-        // object format: { fieldName: 'self', otherField: String ... }
+        // normalized fields are instances of Field
+        // with a name and a type
         let normalizedFields = fieldNames.map(function(key) {
             return Model.createField(key, fields[key], Constructor);
         });
@@ -100,7 +101,7 @@ class Model {
             name, fields: normalizedFields, customMethods
         };
 
-        Model.constructors.forEach(function(ctor) {
+        Model.constructors.forEach(function runConstructor(ctor) {
             ctor(Constructor, constructionData);
         });
 
@@ -109,14 +110,14 @@ class Model {
 
     /**
      * Defines a model property based on settings of a Field instance
-     * Adds getter/setter to read/write on internal model object
+     * Adds getter/setter to read/write on internal model objects
      *
      * @param {Object} model        Model instance
      * @param {Field} field         Field instance
      */
     static defineProperty(model, field) {
         let name = field.name;
-        let getter = function() {
+        let getter = function getter() {
             return model.$$.get(name);
         };
 
@@ -147,11 +148,13 @@ class Model {
     static initialize(model, Constructor) {
         let fields = Constructor.__fields__;
 
-        fields.forEach(function(field) {
+        fields.forEach(function initializeField(field) {
             Model.defineProperty(model, field);
         });
 
-        Model.initializers.forEach((initializer) => initializer(model, Constructor));
+        Model.initializers.forEach(function runInitializer(initializer) {
+            initializer(model, Constructor);
+        });
     }
 
     static noop() {}
@@ -177,7 +180,8 @@ class Model {
         let type = typeof config;
         let field = config;
 
-        // field is a constructor
+        // field is a constructor,
+        // e.g.: { name: String }
         if (type === 'function') {
             field = {
                 type: field
@@ -217,7 +221,7 @@ class Model {
     static applyDefaultValues(model) {
         function setDefault(field) {
             if ('default' in field) {
-                model.$$.setPersistent(field.name, field.default);
+                this.$$.setPersistent(field.name, field.default);
             }
         }
 
@@ -237,15 +241,19 @@ class Model {
 
             if (name in values) {
                 let value = field.parseValue(values[name]);
-                model.$$.setPersistent(name, value);
+                this.$$.setPersistent(name, value);
             }
         }
 
         Model.iterateFields(model, setValue);
     }
 
+    /**
+     * Iterate over fields of a model instance calling the
+     * iterator function with each field definition
+     */
     static iterateFields(model, iterator) {
-        model.$$model.__fields__.forEach(iterator, model);
+        return model.constructor.__fields__.map(iterator, model);
     }
 }
 
@@ -272,17 +280,9 @@ Model.initializers.push(function addDirtyFlag(model) {
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
         set: Model.noop,
-        get: function() {
+        get: function getDirty() {
             return (model.$$.changed !== false);
         }
-    });
-});
-
-Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
-    Object.defineProperty(model, '$$model', {
-        enumerable: false,
-        writable: false,
-        value: Constructor
     });
 });
 
@@ -311,7 +311,7 @@ Model.constructors.push(function defineStaticProperties(Constructor, data) {
         __name__: name
     };
 
-    Object.keys(staticProperties).forEach(function(key) {
+    Object.keys(staticProperties).forEach(function addStatic(key) {
         Object.defineProperty(Constructor, key, {
             value: staticProperties[key],
             writable: false
@@ -327,7 +327,7 @@ Model.constructors.push(function addCustomMethods(Constructor, data) {
     let fieldNames = data.fields.map((field) => field.name);
     let customMethodNames = Object.keys(customMethods);
 
-    customMethodNames.forEach(function(name) {
+    customMethodNames.forEach(function addCustomMethod(name) {
         if (fieldNames.indexOf(name) !== -1) {
             throw new Error(`Cannot override field ${name} with a custom method of same name`);
         }
@@ -366,20 +366,21 @@ class ModelMethods {
 }
 
 /**
- * Creates an instance of ModelMethods to use as a base object
- * for a model instance
- */
-ModelMethods.create = function() {
-    var methods = new ModelMethods();
-
-    methods.data = {};
-    methods.changed = false;
-
-    return methods;
-};
-
-/**
  * Model.fn
  * Methods available on each model instance
  */
 Model.fn = ModelMethods.prototype;
+Model.fn.changed = false;
+
+/**
+ * Creates an instance of ModelMethods to use as a base object
+ * for a model instance
+ */
+ModelMethods.create = function(Constructor) {
+    var methods = new ModelMethods();
+
+    methods.data = {};
+    methods.Model = Constructor;
+
+    return methods;
+};

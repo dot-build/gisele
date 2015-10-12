@@ -30,16 +30,16 @@ class Field {
     serialize(value) {
         return value;
     }
+
+    static create(config) {
+        let type = config.type;
+        let FieldConstructor = Field.registry.get(type) || GenericField;
+
+        return new FieldConstructor(config);
+    }
 }
 
-Field.register = new Map();
-
-Field.create = function(config) {
-    let type = config.type;
-    let FieldConstructor = Field.register.get(type) || CustomField;
-
-    return new FieldConstructor(config);
-};
+Field.registry = new Map();
 
 class StringField extends Field {
     parse(value) {
@@ -71,6 +71,7 @@ class DateField extends Field {
 
         if (typeof value === 'string') {
             let parsedTime = Date.parse(value);
+
             if (!isFinite(parsedTime)) return null;
 
             return new Date(parsedTime);
@@ -84,7 +85,7 @@ class DateField extends Field {
     }
 }
 
-class CustomField extends Field {
+class GenericField extends Field {
     parse(value) {
         return value !== null ? new this.type(value) : null;
     }
@@ -98,10 +99,15 @@ class CustomField extends Field {
     }
 }
 
+Field.add = Field.registry.set.bind(Field.registry);
+Field.get = Field.registry.get.bind(Field.registry);
+
 /**
  * Default constructor/field for primitive values
  */
-Field.register.set(String, StringField);
-Field.register.set(Number, NumberField);
-Field.register.set(Boolean, BooleanField);
-Field.register.set(Date, DateField);
+Field.registry.set(String, StringField);
+Field.registry.set(Number, NumberField);
+Field.registry.set(Boolean, BooleanField);
+Field.registry.set(Date, DateField);
+
+Field.Generic = GenericField;

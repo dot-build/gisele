@@ -54,19 +54,20 @@ var Field = (function () {
         value: function serialize(value) {
             return value;
         }
+    }], [{
+        key: 'create',
+        value: function create(config) {
+            var type = config.type;
+            var FieldConstructor = Field.registry.get(type) || GenericField;
+
+            return new FieldConstructor(config);
+        }
     }]);
 
     return Field;
 })();
 
-Field.register = new Map();
-
-Field.create = function (config) {
-    var type = config.type;
-    var FieldConstructor = Field.register.get(type) || CustomField;
-
-    return new FieldConstructor(config);
-};
+Field.registry = new Map();
 
 var StringField = (function (_Field) {
     _inherits(StringField, _Field);
@@ -148,6 +149,7 @@ var DateField = (function (_Field4) {
 
             if (typeof value === 'string') {
                 var parsedTime = Date.parse(value);
+
                 if (!isFinite(parsedTime)) return null;
 
                 return new Date(parsedTime);
@@ -165,20 +167,16 @@ var DateField = (function (_Field4) {
     return DateField;
 })(Field);
 
-var CustomField = (function (_Field5) {
-    _inherits(CustomField, _Field5);
+var GenericField = (function (_Field5) {
+    _inherits(GenericField, _Field5);
 
-    function CustomField() {
-        _classCallCheck(this, CustomField);
+    function GenericField() {
+        _classCallCheck(this, GenericField);
 
-        _get(Object.getPrototypeOf(CustomField.prototype), 'constructor', this).apply(this, arguments);
+        _get(Object.getPrototypeOf(GenericField.prototype), 'constructor', this).apply(this, arguments);
     }
 
-    /**
-     * Default constructor/field for primitive values
-     */
-
-    _createClass(CustomField, [{
+    _createClass(GenericField, [{
         key: 'parse',
         value: function parse(value) {
             return value !== null ? new this.type(value) : null;
@@ -194,13 +192,21 @@ var CustomField = (function (_Field5) {
         }
     }]);
 
-    return CustomField;
+    return GenericField;
 })(Field);
 
-Field.register.set(String, StringField);
-Field.register.set(Number, NumberField);
-Field.register.set(Boolean, BooleanField);
-Field.register.set(Date, DateField);
+Field.add = Field.registry.set.bind(Field.registry);
+Field.get = Field.registry.get.bind(Field.registry);
+
+/**
+ * Default constructor/field for primitive values
+ */
+Field.registry.set(String, StringField);
+Field.registry.set(Number, NumberField);
+Field.registry.set(Boolean, BooleanField);
+Field.registry.set(Date, DateField);
+
+Field.Generic = GenericField;
 
 /* globals Field */
 /**
@@ -231,7 +237,7 @@ var Model = (function () {
     _createClass(Model, [{
         key: 'toString',
         value: function toString() {
-            return this.$$model.__name__;
+            return this.constructor.__name__;
         }
     }, {
         key: 'toJSON',
@@ -245,8 +251,8 @@ var Model = (function () {
             var data = {};
             var result = {};
 
-            sources.forEach(function (source) {
-                Object.keys(source).forEach(function (key) {
+            sources.forEach(function mergeSource(source) {
+                Object.keys(source).forEach(function copyProperty(key) {
                     data[key] = source[key];
                 });
             });
@@ -315,7 +321,8 @@ var Model = (function () {
 
             var fieldNames = Object.keys(fields);
 
-            // object format: { fieldName: 'self', otherField: String ... }
+            // normalized fields are instances of Field
+            // with a name and a type
             var normalizedFields = fieldNames.map(function (key) {
                 return Model.createField(key, fields[key], Constructor);
             });
@@ -324,7 +331,7 @@ var Model = (function () {
                 name: name, fields: normalizedFields, customMethods: customMethods
             };
 
-            Model.constructors.forEach(function (ctor) {
+            Model.constructors.forEach(function runConstructor(ctor) {
                 ctor(Constructor, constructionData);
             });
 
@@ -333,7 +340,7 @@ var Model = (function () {
 
         /**
          * Defines a model property based on settings of a Field instance
-         * Adds getter/setter to read/write on internal model object
+         * Adds getter/setter to read/write on internal model objects
          *
          * @param {Object} model        Model instance
          * @param {Field} field         Field instance
@@ -375,12 +382,12 @@ var Model = (function () {
         value: function initialize(model, Constructor) {
             var fields = Constructor.__fields__;
 
-            fields.forEach(function (field) {
+            fields.forEach(function initializeField(field) {
                 Model.defineProperty(model, field);
             });
 
-            Model.initializers.forEach(function (initializer) {
-                return initializer(model, Constructor);
+            Model.initializers.forEach(function runInitializer(initializer) {
+                initializer(model, Constructor);
             });
         }
     }, {
@@ -410,7 +417,8 @@ var Model = (function () {
             var type = typeof config;
             var field = config;
 
-            // field is a constructor
+            // field is a constructor,
+            // e.g.: { name: String }
             if (type === 'function') {
                 field = {
                     type: field
@@ -456,7 +464,7 @@ var Model = (function () {
         value: function applyDefaultValues(model) {
             function setDefault(field) {
                 if ('default' in field) {
-                    model.$$.setPersistent(field.name, field['default']);
+                    this.$$.setPersistent(field.name, field['default']);
                 }
             }
 
@@ -478,16 +486,21 @@ var Model = (function () {
 
                 if (name in values) {
                     var value = field.parseValue(values[name]);
-                    model.$$.setPersistent(name, value);
+                    this.$$.setPersistent(name, value);
                 }
             }
 
             Model.iterateFields(model, setValue);
         }
+
+        /**
+         * Iterate over fields of a model instance calling the
+         * iterator function with each field definition
+         */
     }, {
         key: 'iterateFields',
         value: function iterateFields(model, iterator) {
-            model.$$model.__fields__.forEach(iterator, model);
+            return model.constructor.__fields__.map(iterator, model);
         }
     }]);
 
@@ -511,17 +524,9 @@ Model.initializers.push(function addDirtyFlag(model) {
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
         set: Model.noop,
-        get: function get() {
+        get: function getDirty() {
             return model.$$.changed !== false;
         }
-    });
-});
-
-Model.initializers.push(function addReferenceToConstructor(model, Constructor) {
-    Object.defineProperty(model, '$$model', {
-        enumerable: false,
-        writable: false,
-        value: Constructor
     });
 });
 
@@ -549,7 +554,7 @@ Model.constructors.push(function defineStaticProperties(Constructor, data) {
         __name__: name
     };
 
-    Object.keys(staticProperties).forEach(function (key) {
+    Object.keys(staticProperties).forEach(function addStatic(key) {
         Object.defineProperty(Constructor, key, {
             value: staticProperties[key],
             writable: false
@@ -567,7 +572,7 @@ Model.constructors.push(function addCustomMethods(Constructor, data) {
     });
     var customMethodNames = Object.keys(customMethods);
 
-    customMethodNames.forEach(function (name) {
+    customMethodNames.forEach(function addCustomMethod(name) {
         if (fieldNames.indexOf(name) !== -1) {
             throw new Error('Cannot override field ' + name + ' with a custom method of same name');
         }
@@ -582,8 +587,8 @@ var ModelMethods = (function () {
     }
 
     /**
-     * Creates an instance of ModelMethods to use as a base object
-     * for a model instance
+     * Model.fn
+     * Methods available on each model instance
      */
 
     _createClass(ModelMethods, [{
@@ -623,20 +628,21 @@ var ModelMethods = (function () {
     return ModelMethods;
 })();
 
-ModelMethods.create = function () {
+Model.fn = ModelMethods.prototype;
+Model.fn.changed = false;
+
+/**
+ * Creates an instance of ModelMethods to use as a base object
+ * for a model instance
+ */
+ModelMethods.create = function (Constructor) {
     var methods = new ModelMethods();
 
     methods.data = {};
-    methods.changed = false;
+    methods.Model = Constructor;
 
     return methods;
 };
-
-/**
- * Model.fn
- * Methods available on each model instance
- */
-Model.fn = ModelMethods.prototype;
 
 	var Gisele = {
 		Model: Model,
