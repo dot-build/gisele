@@ -2,6 +2,9 @@
 
 Because Bündchen is too fancy to name a model library
 
+Gisele is a data modeling library to create Model classes. It is used to wrap plain objects and provide extensibility without
+needing to use weird properties for data bindings.
+
 ## In one line
 
 A base class to write data models in Javascript. Give it a set of fields and it will handle the model state
@@ -25,7 +28,13 @@ var fruit = new Fruit({
 	calories: 120
 });
 
+## Plugins
+
+Plugins available:
+
+
 ```
+## Changes, commit and rollback
 
 Each declared field is managed and the changes are tracked apart from the pristine data, so the model can be reset or the changes applied after we actually saved the changes somewhere.
 

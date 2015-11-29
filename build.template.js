@@ -1,5 +1,4 @@
 (function(global) {
-	'use strict';
 
 	/* content goes here */
 
