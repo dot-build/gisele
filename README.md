@@ -39,7 +39,6 @@ Extended features:
 - [gisele-validation](https://github.com/darlanalves/gisele-validation)
 
 
-```
 ## Changes, commit and rollback
 
 Each declared field is managed and the changes are tracked apart from the pristine data, so the model can be reset or the changes applied after we actually saved the changes somewhere.
