@@ -276,8 +276,8 @@ var Model = (function () {
     }, {
         key: 'fieldToJSON',
         value: function fieldToJSON(field, value) {
-            if (field.isArray) {
-                return Array.isArray(value) ? value.map(field.serialize) : null;
+            if (field.isArray && Array.isArray(value)) {
+                return value.map(field.serialize, field);
             }
 
             return field.serialize(value);
