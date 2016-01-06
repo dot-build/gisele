@@ -1,5 +1,4 @@
 (function(global) {
-	'use strict';
 
 	'use strict';
 
@@ -278,7 +277,7 @@ var Model = (function () {
         key: 'fieldToJSON',
         value: function fieldToJSON(field, value) {
             if (field.isArray) {
-                return value.map(field.serialize);
+                return Array.isArray(value) ? value.map(field.serialize) : null;
             }
 
             return field.serialize(value);
