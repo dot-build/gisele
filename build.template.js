@@ -4,7 +4,8 @@
 
 	var Gisele = {
 		Model: Model,
-		Field: Field
+		Field: Field,
+		RelationField: RelationField
 	};
 
 	if (typeof define === 'function' && define.amd) {
