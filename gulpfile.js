@@ -11,7 +11,6 @@ function buildRelease() {
 		concat = require('gulp-concat'),
 		rename = require('gulp-rename'),
 		wrap = require('gulp-wrap'),
-		babelOptions = require(__dirname + '/babel-options.js'),
 		wrapper = require('fs').readFileSync(__dirname + '/build.template.js', 'utf8');
 
 	wrapper = wrapper.replace('/* content goes here */', '<%='+' contents %>');
@@ -20,7 +19,7 @@ function buildRelease() {
 	multipipe(
 		gulp.src('src/**/*.js'),
 		concat('gisele.js'),
-		babel(babelOptions),
+		babel(),
 		wrap(wrapper),
 		gulp.dest('dist'),
 		uglify(),
