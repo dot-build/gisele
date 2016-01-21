@@ -1,3 +1,6 @@
+/**
+ * Model Field
+ */
 class Field {
     constructor(config) {
         if (!config) {

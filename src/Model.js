@@ -1,7 +1,5 @@
 /* globals Field */
 /**
- * @class Model
- *
  * Model layout:
  *
  *      model = {
@@ -17,10 +15,24 @@ class Model {
     }
 
     toJSON() {
-        return Model.toJSON(this);
+        return Model.helpers.toJSON(this);
     }
 
-    static toJSON(model) {
+    static new(config) {
+        return Model.helpers.create(config);
+    }
+
+    static create(config) {
+        return Model.helpers.create(config);
+    }
+}
+
+/**
+ * Model helpers
+ * @static
+ */
+Model.helpers = {
+    toJSON(model) {
         var sources = [model.$$.data, model.$$.changed || {}];
         var data = {};
         var result = {};
@@ -36,7 +48,7 @@ class Model {
             let value;
 
             if (name in data) {
-                value = Model.fieldToJSON(field, data[name]);
+                value = Model.helpers.fieldToJSON(field, data[name]);
             }
 
             if (value !== undefined) {
@@ -44,22 +56,22 @@ class Model {
             }
         }
 
-        Model.iterateFields(model, extractFields);
+        Model.helpers.iterateFields(model, extractFields);
 
         return result;
-    }
+    },
 
-    static fieldToJSON(field, value) {
+    fieldToJSON(field, value) {
         if (field.isArray && Array.isArray(value)) {
             return value.map(field.serialize, field);
         }
 
         return field.serialize(value);
-    }
+    },
 
-    static isModel(value) {
+    isModel(value) {
         return value instanceof Model;
-    }
+    },
 
     /**
      * Creates a new Model constructor using the given config
@@ -67,7 +79,7 @@ class Model {
      *
      * Executes each construction step definedl on Model.constructors
      */
-    static create(config) {
+    create(config) {
         if (typeof config !== 'object') {
             throw new Error('Invalid model configuration');
         }
@@ -84,9 +96,9 @@ class Model {
         }
 
         let Constructor = function Gisele(data) {
-            Model.initialize(this, Constructor);
-            Model.applyDefaultValues(this, Constructor);
-            Model.applyValues(this, data);
+            Model.helpers.initialize(this, Constructor);
+            Model.helpers.applyDefaultValues(this, Constructor);
+            Model.helpers.applyValues(this, data);
         };
 
         let fieldNames = Object.keys(fields);
@@ -94,7 +106,7 @@ class Model {
         // normalized fields are instances of Field
         // with a name and a type
         let normalizedFields = fieldNames.map(function(key) {
-            return Model.createField(key, fields[key], Constructor);
+            return Model.helpers.createField(key, fields[key], Constructor);
         });
 
         let constructionData = {
@@ -106,7 +118,7 @@ class Model {
         });
 
         return Constructor;
-    }
+    },
 
     /**
      * Defines a model property based on settings of a Field instance
@@ -115,13 +127,13 @@ class Model {
      * @param {Object} model        Model instance
      * @param {Field} field         Field instance
      */
-    static defineProperty(model, field) {
+    defineProperty(model, field) {
         let name = field.name;
         let getter = function getter() {
             return model.$$.get(name);
         };
 
-        let setter = Model.noop;
+        let setter = Model.helpers.noop;
 
         if (!field.readOnly) {
             setter = function setter(value) {
@@ -137,27 +149,27 @@ class Model {
         };
 
         Object.defineProperty(model, name, descriptor);
-    }
+    },
 
     /**
      * Initialize a model instance
      *
      * @param {Object} model            Model instance
-     * @param {Function} Constructor    Constructor of instance (a Function created with Model.create)
+     * @param {Function} Constructor    Constructor of instance (a Function created with Model.new)
      */
-    static initialize(model, Constructor) {
+    initialize(model, Constructor) {
         let fields = Constructor.__fields__;
 
         fields.forEach(function initializeField(field) {
-            Model.defineProperty(model, field);
+            Model.helpers.defineProperty(model, field);
         });
 
         Model.initializers.forEach(function runInitializer(initializer) {
             initializer(model, Constructor);
         });
-    }
+    },
 
-    static noop() {}
+    noop() {},
 
     /**
      * Create and return a model field instance
@@ -165,7 +177,7 @@ class Model {
      * @param {Object} config           Field config
      * @param {Function} Constructor    The model constructor which will use this field
      */
-    static createField(name, config, Constructor) {
+    createField(name, config, Constructor) {
         if (!config) {
             throw new Error('Invalid field config', config);
         }
@@ -197,7 +209,7 @@ class Model {
         }
 
         return Field.create(field);
-    }
+    },
 
     /**
      * Apply a change to an object or a set of changes
@@ -205,35 +217,35 @@ class Model {
      * @param {String|Object}       Property name, or an object with changes
      * @param {*} value             The value to apply (if name is a property)
      */
-    static applyChanges(object, name, value) {
+    applyChanges(object, name, value) {
         if (typeof name === 'object' && name) {
             Object.keys(name).forEach((key) => object[key] = name[key]);
         } else {
             object[name] = value;
         }
-    }
+    },
 
     /**
      * Apply default values (defined on model fields) to model instance
      * @param {Object} model            Model instance
      * @param {Function} Constructor    Constructor of model instance
      */
-    static applyDefaultValues(model) {
+    applyDefaultValues(model) {
         function setDefault(field) {
             if ('default' in field) {
                 this.$$.setPersistent(field.name, field.default);
             }
         }
 
-        Model.iterateFields(model, setDefault);
-    }
+        Model.helpers.iterateFields(model, setDefault);
+    },
 
     /**
      * Apply a set of values to a model instance
      * @param {Object} model            Model instance
      * @param {Function} Constructor    Constructor of model instance
      */
-    static applyValues(model, values) {
+    applyValues(model, values) {
         if (!values || typeof values !== 'object') return;
 
         function setValue(field) {
@@ -245,17 +257,17 @@ class Model {
             }
         }
 
-        Model.iterateFields(model, setValue);
-    }
+        Model.helpers.iterateFields(model, setValue);
+    },
 
     /**
      * Iterate over fields of a model instance calling the
      * iterator function with each field definition
      */
-    static iterateFields(model, iterator) {
+    iterateFields(model, iterator) {
         return model.constructor.__fields__.map(iterator, model);
     }
-}
+};
 
 /**
  * Model initializers
@@ -279,7 +291,7 @@ Model.initializers.push(function addDirtyFlag(model) {
     // A virtual property that returns true if the model has any changes
     Object.defineProperty(model, '$$dirty', {
         enumerable: false,
-        set: Model.noop,
+        set: Model.helpers.noop,
         get: function getDirty() {
             return (model.$$.changed !== false);
         }
@@ -338,7 +350,7 @@ Model.constructors.push(function addCustomMethods(Constructor, data) {
 
 class ModelMethods {
     setPersistent(name, value) {
-        Model.applyChanges(this.data, name, value);
+        Model.helpers.applyChanges(this.data, name, value);
     }
 
     set(name, value) {
@@ -346,7 +358,7 @@ class ModelMethods {
             this.changed = {};
         }
 
-        Model.applyChanges(this.changed, name, value);
+        Model.helpers.applyChanges(this.changed, name, value);
 
         return this;
     }
@@ -356,7 +368,7 @@ class ModelMethods {
     }
 
     commit() {
-        Model.applyChanges(this.data, this.changed);
+        Model.helpers.applyChanges(this.data, this.changed);
         this.changed = false;
     }
 
