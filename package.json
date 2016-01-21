@@ -1,35 +1,35 @@
 {
-    "name": "gisele",
-    "description": "A data modeling library",
-    "version": "0.1.6",
-    "main": "dist/gisele.js",
-    "author": {
-        "name": "Darlan Alves",
-        "email": "me@darlanalv.es"
-    },
-    "devDependencies": {
-        "babel-polyfill": "^6.3.14",
-        "babel-preset-es2015": "^6.x",
-        "babel-preset-stage-1": "^6.x",
-        "gulp": "^3.8.6",
-        "gulp-babel": "^6.1.1",
-        "gulp-concat": "^2.6.0",
-        "gulp-rename": "^1.2.2",
-        "gulp-uglify": "^0.3.1",
-        "gulp-wrap": "^0.11.0",
-        "jasmine-core": "^2.3.4",
-        "karma": "^0.12.37",
-        "karma-babel-preprocessor": "^6.0.1",
-        "karma-coverage": "^0.2.7",
-        "karma-jasmine": "^0.3.6",
-        "karma-phantomjs-launcher": "^0.1.4",
-        "multipipe": "^0.1.1"
-    },
-    "scripts": {
-        "test": "./node_modules/karma/bin/karma start karma.conf.js --single-run"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/darlanalves/gisele"
-    }
+  "name": "gisele",
+  "description": "A data modeling library",
+  "version": "0.1.7",
+  "main": "dist/gisele.js",
+  "author": {
+    "name": "Darlan Alves",
+    "email": "me@darlanalv.es"
+  },
+  "devDependencies": {
+    "babel-polyfill": "^6.3.14",
+    "babel-preset-es2015": "^6.x",
+    "babel-preset-stage-1": "^6.x",
+    "gulp": "^3.8.6",
+    "gulp-babel": "^6.1.1",
+    "gulp-concat": "^2.6.0",
+    "gulp-rename": "^1.2.2",
+    "gulp-uglify": "^0.3.1",
+    "gulp-wrap": "^0.11.0",
+    "jasmine-core": "^2.3.4",
+    "karma": "^0.12.37",
+    "karma-babel-preprocessor": "^6.0.1",
+    "karma-coverage": "^0.2.7",
+    "karma-jasmine": "^0.3.6",
+    "karma-phantomjs-launcher": "^0.1.4",
+    "multipipe": "^0.1.1"
+  },
+  "scripts": {
+    "test": "./node_modules/karma/bin/karma start karma.conf.js --single-run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darlanalves/gisele"
+  }
 }
