@@ -16,8 +16,14 @@ function buildRelease() {
 	wrapper = wrapper.replace('/* content goes here */', '<%='+' contents %>');
 	console.log('Building version ' + version);
 
+	var sources = [
+		'src/Model.js',
+		'src/Field.js',
+		'src/RelationField.js'
+	];
+
 	multipipe(
-		gulp.src('src/**/*.js'),
+		gulp.src(sources),
 		concat('gisele.js'),
 		babel(),
 		wrap(wrapper),
